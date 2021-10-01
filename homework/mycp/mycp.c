@@ -75,10 +75,11 @@ int MyWrite (int fd, char* buffer, int size)
     do
     {
         countWritten = write(fd, buffer + countWritten, size);
-        if (countWritten == -1)
+        if (countWritten < 0)
         {
             return FAILURE;
         }
+
         LeftToWrite -= countWritten;
     }while ((countWritten != 0) && (LeftToWrite != 0));
 
@@ -90,7 +91,6 @@ int MyWrite (int fd, char* buffer, int size)
 int MyRead (int fd, char* buffer, int size)
 {
     int ReadSize = read(fd, buffer, BUFSIZ);
-
     if (ReadSize < 0)
     {
         return FAILURE;
@@ -125,8 +125,8 @@ int ReadWrite(char* FileFrom, char* FileTo, Flags FlagState)
             return FAILURE;
         }
 
-        int Error = MyWrite(fdTo, buffer, ReadFlag);
-        if (Error)
+        int WriteFlag = MyWrite(fdTo, buffer, ReadFlag);
+        if (WriteFlag == FAILURE)
         {
             printf("Appeared an error with writing to %s: %s", FileTo, strerror(errno));
             close (fdFrom);
@@ -255,6 +255,8 @@ char* ReallocateName (char* Name, int length, size_t typeSize, int* currentNameS
 {
     Name = (char*)realloc(Name, length * typeSize); /* if path are too long - reallocate */
     *currentNameSize = length;
+
+    return Name;
 }
 
 //------------------------------------------------------------------------------------------------------------------------

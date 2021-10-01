@@ -18,6 +18,7 @@ int MyWrite (int fd, char* buffer, int size)
     do
     {
         countWritten = write(fd, buffer + countWritten, size);
+
         if (countWritten < 0)
         {
             perror("There appeared problem with writing");
@@ -52,7 +53,6 @@ int catFromStdin(char* buffer)
             return -1;
 
         int Error = MyWrite(FD_STDOUT, buffer, ReadSize);
-
         if(Error == -1)
             return -1;
 
