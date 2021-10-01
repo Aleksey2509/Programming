@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <ctype.h>
 #include <unistd.h>
 #include <uuid/uuid.h>
@@ -43,6 +44,7 @@ int mycp(int argcount, char* arguments[]);
 int checkIfExists (char* Filename);
 int ReadWrite(char* FileFrom, char* FileTo, int mode, Flags FlagState);
 int myopen(char* FileName, int mode, Flags FlagState);
+char* GetNewFilePath (char* dirpath, size_t dirLen, char* OldFilePath, int pahtLen, char* NewFilePath);
 int WorkWithDir (char* FileArr[], int Filecount, Flags FlagState);
 
 
@@ -65,7 +67,7 @@ int checkIfExists(char* Filename)
 int WorkWithDir (char* FileArr[], int Filecount, Flags FlagState)
 {
 
-        DIR* folder = opendir(FileArr[Filecount - 1]);
+        DIR* folder = opendir(FileArr[Filecount - 1]); // just for checking whether this is a viable directory
 
         if (folder == NULL)
         {
@@ -73,34 +75,23 @@ int WorkWithDir (char* FileArr[], int Filecount, Flags FlagState)
             return 0;
         }
 
-        int dirLen = strlen(FileArr[Filecount - 1]);
-        char* Name = (char*)calloc(BUFSIZ, sizeof(char*)); /* creating a buffer to create a pathname to file
-                                                            * that should be created
-                                                            */
+        closedir(folder);
 
+        int dirLen = strlen(FileArr[Filecount - 1]);
+        char* Name = (char*)calloc(BUFSIZ, sizeof(char*)); /* creating a buffer to create a pathname to file */
+                                                           /* that should be created */
+        int currentNameSize = BUFSIZ;
         for (int i = 0; i < Filecount - 1; i++)
         {
             int pathLen = strlen(FileArr[i]);
 
-            if (pathLen + dirLen > BUFSIZ)
-                Name = (char*)realloc(Name, (pathLen + dirLen + 1) * sizeof(char)); /* if path are to long - reallocate */
+            if (pathLen + dirLen > currentNameSize)
+            {
+                Name = (char*)realloc(Name, (pathLen + dirLen + 1) * sizeof(char)); /* if path are too long - reallocate */
+                currentNameSize = pathLen + dirLen + 1;
+            }
 
-            Name = strcpy(Name, FileArr[Filecount - 1]); /* copy path to directory where w=the file should be created */
-
-            if ( FileArr[Filecount - 1][dirLen - 1] != '/' ) /* add a '/' after the directory name, if it is not there */
-                {
-                    Name[dirLen] = '/';
-                    Name[dirLen + 1] = '\0';
-                }
-            
-            int fileLen = 0;
-            for (int j = pathLen; (j >= 0) && (FileArr[i][j] != '/'); j--) /* get the lenth of the file name: start from the */
-                fileLen++;                                                 /* end of path and count till a '/' is encountered or
-                                                                            * the path has ended
-                                                                            */
-
-            //printf("\nGot a new file path - %s\n", FileArr[i] + (pathLen) - fileLen + 1);
-            Name = strcat(Name, (FileArr[i] + pathLen - fileLen + 1)); /* get a new file path by catting the file name to the dir path */
+            Name = GetNewFilePath(FileArr[Filecount - 1], dirLen, FileArr[i], pathLen, Name);
 
             int Result = ReadWrite(FileArr[i], Name, 0, FlagState); /* write from old file to new one */
             if (Result == SUCCESS && FlagState.vflag == 1)
@@ -116,12 +107,34 @@ int WorkWithDir (char* FileArr[], int Filecount, Flags FlagState)
     return 0;
 }
 
+//------------------------------------------------------------------------------------------------------------------------
+
+char* GetNewFilePath (char* dirpath, size_t dirLen, char* OldFilePath, int pathLen, char* NewFilePath)
+{
+    NewFilePath = strcpy(NewFilePath, dirpath); /* copy path to directory where w=the file should be created */
+
+    if ( dirpath[dirLen - 1] != '/' ) /* add a '/' after the directory name, if it is not there */
+        {
+            NewFilePath[dirLen] = '/';
+            NewFilePath[dirLen + 1] = '\0';
+        }
+
+    int fileLen = 0;                                                /* get the lenth of the file name: start from the */
+    for (int j = pathLen; (j >= 0) && (OldFilePath[j] != '/'); j--) /* end of path and count till a '/' is encountered or */
+        fileLen++;                                                  /* the path has ended */
+
+    //printf("\nGot a new file path - %s\n", FileArr[i] + (pathLen) - fileLen + 1);
+    NewFilePath = strcat(NewFilePath, (OldFilePath + pathLen - fileLen + 1)); /* get a new file path by catting the file name to the dir path */
+
+    return NewFilePath;
+}
+
 
 //------------------------------------------------------------------------------------------------------------------------
 
 int myopen(char* FileName, int mode, Flags FlagState)
 {
-    assert ( (mode == READ) || (mode == WRITE)); /* check wheteher func is used properly  */
+    assert ( (mode == READ) || (mode == WRITE)); /* check whether func is used properly  */
 
     if (mode == WRITE)
     {
