@@ -40,12 +40,15 @@ typedef struct FlagStruct
     int iflag;
 }Flags;
 
-int mycp(int argcount, char* arguments[]);
 int checkIfExists (char* Filename);
-int ReadWrite(char* FileFrom, char* FileTo, int mode, Flags FlagState);
 int myopen(char* FileName, int mode, Flags FlagState);
+int MyWrite (int fd, char* buffer, int size);
+int MyRead (int fd, char* buffer, int size);
+int ReadWrite(char* FileFrom, char* FileTo, Flags FlagState);
 char* GetNewFilePath (char* dirpath, size_t dirLen, char* OldFilePath, int pahtLen, char* NewFilePath);
+char* ReallocateName (char* Name, int length, size_t typeSize, int* currentNameSize);
 int WorkWithDir (char* FileArr[], int Filecount, Flags FlagState);
+int mycp(int argcount, char* arguments[]);
 
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -64,69 +67,80 @@ int checkIfExists(char* Filename)
 
 //------------------------------------------------------------------------------------------------------------------------
 
-int WorkWithDir (char* FileArr[], int Filecount, Flags FlagState)
+int MyWrite (int fd, char* buffer, int size)
 {
-
-        DIR* folder = opendir(FileArr[Filecount - 1]); // just for checking whether this is a viable directory
-
-        if (folder == NULL)
+    int countWritten = 0;
+    int LeftToWrite = size;
+    
+    do
+    {
+        countWritten = write(fd, buffer + countWritten, size);
+        if (countWritten == -1)
         {
-            perror("Could not open your directory");
-            return 0;
+            return FAILURE;
         }
-
-        closedir(folder);
-
-        int dirLen = strlen(FileArr[Filecount - 1]);
-        char* Name = (char*)calloc(BUFSIZ, sizeof(char*)); /* creating a buffer to create a pathname to file */
-                                                           /* that should be created */
-        int currentNameSize = BUFSIZ;
-        for (int i = 0; i < Filecount - 1; i++)
-        {
-            int pathLen = strlen(FileArr[i]);
-
-            if (pathLen + dirLen > currentNameSize)
-            {
-                Name = (char*)realloc(Name, (pathLen + dirLen + 1) * sizeof(char)); /* if path are too long - reallocate */
-                currentNameSize = pathLen + dirLen + 1;
-            }
-
-            Name = GetNewFilePath(FileArr[Filecount - 1], dirLen, FileArr[i], pathLen, Name);
-
-            int Result = ReadWrite(FileArr[i], Name, 0, FlagState); /* write from old file to new one */
-            if (Result == SUCCESS && FlagState.vflag == 1)
-            {
-                printf("%s -> %s\n", FileArr[i], Name); /* verbose flag mode */
-            }
-
-            memset(Name, 0, strlen(Name));  /* clear the buffer for new file path for the next file */
-        }
-
-    free(Name);
+        LeftToWrite -= countWritten;
+    }while ((countWritten != 0) && (LeftToWrite != 0));
 
     return 0;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 
-char* GetNewFilePath (char* dirpath, size_t dirLen, char* OldFilePath, int pathLen, char* NewFilePath)
+int MyRead (int fd, char* buffer, int size)
 {
-    NewFilePath = strcpy(NewFilePath, dirpath); /* copy path to directory where w=the file should be created */
+    int ReadSize = read(fd, buffer, BUFSIZ);
 
-    if ( dirpath[dirLen - 1] != '/' ) /* add a '/' after the directory name, if it is not there */
+    if (ReadSize < 0)
+    {
+        return FAILURE;
+    }
+
+    return ReadSize;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+
+int ReadWrite(char* FileFrom, char* FileTo, Flags FlagState)
+{
+    char buffer [BUFSIZ] = { 0 };
+
+    int fdFrom = myopen(FileFrom, READ, FlagState);
+    int fdTo = myopen(FileTo, WRITE, FlagState);
+
+    if (fdFrom == FAILURE || fdTo == FAILURE)
+        return FAILURE;
+
+    if (fdTo == STOPPED)
+        return STOPPED;
+
+    while(1)
+    {
+        int ReadFlag = MyRead(fdFrom, buffer, BUFSIZ);
+        if (ReadFlag == FAILURE)
         {
-            NewFilePath[dirLen] = '/';
-            NewFilePath[dirLen + 1] = '\0';
+            printf("There appeared an error with reading from %s: %s", FileFrom, strerror(errno));
+            close (fdFrom);
+            close (fdTo);
+            return FAILURE;
         }
 
-    int fileLen = 0;                                                /* get the lenth of the file name: start from the */
-    for (int j = pathLen; (j >= 0) && (OldFilePath[j] != '/'); j--) /* end of path and count till a '/' is encountered or */
-        fileLen++;                                                  /* the path has ended */
+        int Error = MyWrite(fdTo, buffer, ReadFlag);
+        if (Error)
+        {
+            printf("Appeared an error with writing to %s: %s", FileTo, strerror(errno));
+            close (fdFrom);
+            close (fdTo);
+            return FAILURE;
+        }
 
-    //printf("\nGot a new file path - %s\n", FileArr[i] + (pathLen) - fileLen + 1);
-    NewFilePath = strcat(NewFilePath, (OldFilePath + pathLen - fileLen + 1)); /* get a new file path by catting the file name to the dir path */
+        if (ReadFlag == 0)
+            break;
+    }
+    close (fdFrom);
+    close (fdTo);
 
-    return NewFilePath;
+    return SUCCESS;
 }
 
 
@@ -189,8 +203,7 @@ int myopen(char* FileName, int mode, Flags FlagState)
             fd = open(FileName, O_WRONLY | O_CREAT);
             if (fd < 0)
             {
-                printf("Could not create file with the name %s\n", FileName);
-                perror("Sorry");
+                printf("Could not create file with the name %s: %s\n", FileName, strerror(errno));
                 return FAILURE;
             }
         }
@@ -217,55 +230,76 @@ int myopen(char* FileName, int mode, Flags FlagState)
 
 //------------------------------------------------------------------------------------------------------------------------
 
-int ReadWrite(char* FileFrom, char* FileTo, int mode, Flags FlagState)
+char* GetNewFilePath (char* dirpath, size_t dirLen, char* OldFilePath, int pathLen, char* NewFilePath)
 {
-    char buffer [BUFSIZ] = { 0 };
+    NewFilePath = strcpy(NewFilePath, dirpath); /* copy to newpath the path to directory where the file should be created */
 
-    int fdFrom = myopen(FileFrom, READ, FlagState);
-    int fdTo = myopen(FileTo, WRITE, FlagState);
-
-    if (fdFrom == FAILURE || fdTo == FAILURE)
-        return FAILURE;
-
-    if (fdTo == STOPPED)
-        return STOPPED;
-
-    while(1)
-    {
-        int ReadFlag = 0;
-        int LeftToRead = BUFSIZ;
-        while (1)
+    if ( dirpath[dirLen - 1] != '/' ) /* add a '/' after the directory name, if it is not there */
         {
-            ReadFlag = read(fdFrom, buffer + ReadFlag, BUFSIZ);
-            if (ReadFlag < 0)
-            {
-                perror("There apperead a problem with reading the file: ");
-                close(fdFrom);
-                return FAILURE;
-            }
-            LeftToRead -= ReadFlag;
-
-            if ( (ReadFlag == 0) || (LeftToRead == 0) )
-                break;
+            NewFilePath[dirLen] = '/';
+            NewFilePath[dirLen + 1] = '\0';
         }
 
-        int countWritten = 0;
-        int LeftToWrite = BUFSIZ - LeftToRead;
+    int fileLen = 0;                                                /* get the lenth of the file name: start from the */
+    for (int j = pathLen; (j >= 0) && (OldFilePath[j] != '/'); j--) /* end of path and count till a '/' is encountered or */
+        fileLen++;                                                  /* the path has ended */
 
-        do
+    NewFilePath = strcat(NewFilePath, (OldFilePath + pathLen - fileLen + 1)); /* get a new file path by catting the file name to the dir path */
+
+    return NewFilePath;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+
+char* ReallocateName (char* Name, int length, size_t typeSize, int* currentNameSize)
+{
+    Name = (char*)realloc(Name, length * typeSize); /* if path are too long - reallocate */
+    *currentNameSize = length;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+
+int WorkWithDir (char* FileArr[], int Filecount, Flags FlagState)
+{
+
+        DIR* folder = opendir(FileArr[Filecount - 1]); /* just for checking whether this is a viable directory */
+
+        if (folder == NULL)
         {
-            countWritten = write(fdTo, buffer + countWritten, LeftToWrite);
-            LeftToWrite -= countWritten;
-            
-        }while ((countWritten != 0) && (LeftToWrite != 0));
+            perror("Could not open your directory");
+            return FAILURE;
+        }
 
-        if (ReadFlag == 0)
-            break;
-    }
-    close (fdFrom);
-    close (fdTo);
+        closedir(folder);
 
-    return SUCCESS;
+        char* Name = (char*)calloc(BUFSIZ, sizeof(char*)); /* creating a buffer to create a pathname to file in new folder */
+        int currentNameSize = BUFSIZ;
+
+        int dirLen = strlen(FileArr[Filecount - 1]);
+
+        for (int i = 0; i < Filecount - 1; i++)
+        {
+            int pathLen = strlen(FileArr[i]);
+
+            if (pathLen + dirLen > currentNameSize)
+            {
+                Name = ReallocateName(Name, dirLen + pathLen + 1, sizeof(char), &currentNameSize);
+            }
+
+            Name = GetNewFilePath(FileArr[Filecount - 1], dirLen, FileArr[i], pathLen, Name);
+
+            int Result = ReadWrite(FileArr[i], Name, FlagState); /* write from old file to new one */
+            if (Result == SUCCESS && FlagState.vflag == 1)
+            {
+                printf("%s -> %s\n", FileArr[i], Name); /* verbose flag mode */
+            }
+
+            memset(Name, 0, currentNameSize);  /* clear the buffer for new file path for the next file */
+        }
+
+    free(Name);
+
+    return 0;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -309,7 +343,7 @@ int mycp(int argcount, char* arguments[])
     }
     else
     {
-        int Result = ReadWrite( arguments[optind], arguments[optind + 1], 0, FlagState);
+        int Result = ReadWrite( arguments[optind], arguments[optind + 1], FlagState);
 
         if (Result == SUCCESS && FlagState.vflag == 1)
         {

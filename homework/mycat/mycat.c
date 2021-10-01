@@ -13,12 +13,18 @@ const int FD_STDOUT = 1;
 int MyWrite (int fd, char* buffer, int size)
 {
     int countWritten = 0;
-    int LeftToWrite = 0;
+    int LeftToWrite = size;
     
     do
     {
         countWritten = write(fd, buffer + countWritten, size);
-        LeftToWrite = size - countWritten;
+        if (countWritten < 0)
+        {
+            perror("There appeared problem with writing");
+            return -1;
+        }
+
+        LeftToWrite -= countWritten;
     }while ((countWritten != 0) && (LeftToWrite != 0));
 
     return 0;
@@ -30,7 +36,7 @@ int MyRead (int fd, char* buffer, int size)
 
     if (ReadSize < 0)
     {
-        perror("There apperead a problem with reading the file: ");
+        perror("There apperead a problem with reading: ");
         return -1;
     }
 
@@ -42,8 +48,13 @@ int catFromStdin(char* buffer)
     while(1)
     {
         int ReadSize = MyRead(FD_STDIN, buffer, BUFSIZ);
-        
-        MyWrite(FD_STDOUT, buffer, ReadSize);
+        if (ReadSize == -1)
+            return -1;
+
+        int Error = MyWrite(FD_STDOUT, buffer, ReadSize);
+
+        if(Error == -1)
+            return -1;
 
         if(ReadSize == 0)
             break;
@@ -68,8 +79,18 @@ int catFromFile(int filecount, char* argv[], char* buffer)
         while (1)
         {
             int ReadSize = MyRead(fd, buffer, BUFSIZ);
-            
-            MyWrite(FD_STDOUT, buffer, ReadSize);
+            if (ReadSize == -1)
+            {
+                printf("The mentioned problem appeared with file %s\n", argv[i]);
+                return -1;
+            }
+
+            int Error = MyWrite(FD_STDOUT, buffer, ReadSize);
+            if(Error == -1)
+            {
+                printf("The mentioned problem appeared with file %s\n", argv[i]);
+                return -1;
+            }
 
             if(ReadSize == 0)
                 break;
