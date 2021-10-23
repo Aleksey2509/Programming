@@ -21,19 +21,20 @@ int MyWrite (int fd, char* buffer, int size)
 {
     int countWritten = 0;
     int LeftToWrite = size;
+    printf("\n%D\n\n", fd);
     
-    do
-    {
-        countWritten = write(fd, buffer + countWritten, size);
+    // do
+    // {
+    //     countWritten = write(fd, buffer + countWritten, size);
 
-        if (countWritten < 0)
-        {
-            perror("There appeared problem with writing");
-            return -1;
-        }
+    //     if (countWritten < 0)
+    //     {
+    //         perror("There appeared problem with writing");
+    //         return -1;
+    //     }
 
-        LeftToWrite -= countWritten;
-    }while ((countWritten != 0) && (LeftToWrite != 0));
+    //     LeftToWrite -= countWritten;
+    // }while ((countWritten != 0) && (LeftToWrite != 0));
 
     return 0;
 }
@@ -141,7 +142,7 @@ int main(int argc, char* argv[])
          {
             close(fd[FD_WRITE]);
 
-            if (vFlag)
+            if (!vFlag)
                 close(FD_WRITE);
 
             int nBytes = 0;
@@ -158,7 +159,10 @@ int main(int argc, char* argv[])
                 }
 
                 if (vFlag)
-                    MyWrite(1, buffer, ReadSize);
+                {
+                    printf("\n%d\n", FD_WRITE);
+                    MyWrite(FD_WRITE, buffer, ReadSize);
+                }
 
                 nBytes += ReadSize;
                 nLines += countLines(buffer, ReadSize);
