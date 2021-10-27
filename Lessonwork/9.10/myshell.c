@@ -85,7 +85,7 @@ char** breakInProgs(char* cmdBuf, int* progNum)
 
     while ((vertPtr = strchr(cmdBuf, '|')) != 0)
     {
-        printf("HERE\n");
+        //printf("HERE\n");
         progPointer[progCounter++] = vertPtr;
         if (progCounter == (PROGS_MAX - 1))
         {
@@ -114,14 +114,12 @@ char** breakInWords(char* cmdBuf, int* myArgc, char* argEnd)
 
     int spaceNum = 0;
     char forSkip [BUFFSIZE] = { 0 };
-    if(cmdBuf[0] == ' ')
+    while(cmdBuf[0] == ' ')
     {
-        sscanf(cmdBuf, "%[ ]%n", forSkip, &spaceNum);
-        //printf("before: spacenum = %d", spaceNum);
-        cmdBuf += spaceNum;
+        cmdBuf++;
     }
 
-    while ( (cmdBuf < argEnd) && ((wordPtr = strchr(cmdBuf, ' ')) != 0) && (wordPtr < argEnd))
+    while ( ((cmdBuf < argEnd) || (argEnd == NULL)) && ((wordPtr = strchr(cmdBuf, ' ')) != 0) && ((wordPtr < argEnd) || (argEnd == NULL)) )
     {
 
         myArgv[nWords] = (char*)calloc((size_t)(wordPtr - cmdBuf + 1), sizeof(char));
@@ -133,20 +131,21 @@ char** breakInWords(char* cmdBuf, int* myArgc, char* argEnd)
         cmdBuf = wordPtr + 1;
         //printf("after: cmdbuf - %p, left in cmdbuf - %s\n", cmdBuf, cmdBuf);
 
-        if(cmdBuf[0] == ' ')
+        while(cmdBuf[0] == ' ')
         {
-            sscanf(cmdBuf, "%[ ]%n", forSkip, &spaceNum);
-            //printf("before: spacenum = %d", spaceNum);
-            cmdBuf += spaceNum;
-            //printf("after eating spacebars: cmdbuf - %p, left in cmdbuf - %s\n", cmdBuf, cmdBuf);
+            cmdBuf++;
         }
+
     }
 
     //printf("leftover - %s\n", cmdBuf);
     if (argEnd == NULL)
     {
-        myArgv[nWords] = strdup(cmdBuf);
-        nWords++;
+        if (cmdBuf[0] != '\0')
+        {
+            myArgv[nWords] = strdup(cmdBuf);
+            nWords++;
+        }
     }
     else
     {
@@ -163,44 +162,75 @@ char** breakInWords(char* cmdBuf, int* myArgc, char* argEnd)
     return myArgv;
 }
 
+int closeFd (struct PipeFd* pipeArray, long long size, int childNum)
+{
+    printf("\nin closefd(): childNum - %d, size - %lld\n", childNum, size);
+    if (size < 0)
+        return 0;
+
+    for (int i = 0; i < size; i++)
+    {
+        close (pipeArray[i].fd[FD_READ]);
+        close (pipeArray[i].fd[FD_WRITE]);
+        printf("closed %d and %d in process %d\n", pipeArray[i].fd[FD_READ], pipeArray[i].fd[FD_WRITE], childNum);
+    }
+    return 0;
+}
+
 int childProcess (int childNum, char* cmdBuf, char** argPointers, int progNum, struct PipeFd* pipeArray)
 {
-    printf("childNum = %d\n", childNum);
-            int myArgc = 0;
-            char** myArgv = 0;
-            myArgv = breakInWords(cmdBuf, &myArgc, argPointers[childNum]);
+    if (childNum > 1)
+        closeFd(pipeArray, childNum - 1, childNum);
+    if (childNum < progNum - 2)
+        closeFd(pipeArray + childNum + 1, progNum - (childNum + 2), childNum);
 
-            //printf("prog number %d got %p", childNum, myArgv);
+    printf("childNum = %d, progNum = %d\n", childNum, progNum);
+    int myArgc = 0;
+    char** myArgv = 0;
+    myArgv = breakInWords(cmdBuf, &myArgc, argPointers[childNum]);
 
-            printf("\ngot: %s, argcount - %d\n", cmdBuf, myArgc);
+    //printf("prog number %d got %p", childNum, myArgv);
 
-            printf("printing words:\n");
-            for (int i = 0; i < myArgc; i++)
-                printf("%s\n", myArgv[i]);
+    //printf("got: %s, argcount - %d\n", cmdBuf, myArgc);
 
-            if (childNum > 0)
-            {
-                printf("pipe read end that will be used: %d\n", pipeArray[childNum - 1].fd[FD_READ]);
-                if (dup2(pipeArray[childNum - 1].fd[FD_READ], FD_READ) < 0)
-                    fprintf(stderr, "There is a bit of problem with rerouting read end for process %d: %s", childNum, strerror(errno));
-                close (pipeArray[childNum - 1].fd[FD_READ]);
-            }
+    printf("printing words:\n");
+    for (int i = 0; i < myArgc; i++)
+        printf("%s, len - %lu\n", myArgv[i], strlen(myArgv[i]));
 
-            if (childNum != (progNum - 1))
-            {
-                printf("pipe write end that will be used: %d\n", pipeArray[childNum].fd[FD_WRITE]);
-                if (dup2(pipeArray[childNum].fd[FD_WRITE], FD_WRITE) < 0)
-                    fprintf(stderr, "There is a bit of problem with rerouting write end for process %d: %s", childNum, strerror(errno));
-                close (pipeArray[childNum].fd[FD_WRITE]);
-            }
+    if (childNum > 0)
+    {
+        close (pipeArray[childNum - 1].fd[FD_WRITE]);
+        //printf("pipe read end that will be used: %d\n", pipeArray[childNum - 1].fd[FD_READ]);
+        if (dup2(pipeArray[childNum - 1].fd[FD_READ], FD_READ) < 0)
+            fprintf(stderr, "There is a bit of problem with rerouting read end for process %d: %s", childNum, strerror(errno));
+        close (pipeArray[childNum - 1].fd[FD_READ]);
+    }
+    else
+    {
+        close (pipeArray[0].fd[FD_READ]);
+        //printf("closed the first pipe's read end with fd - %D\n", pipeArray[0].fd[FD_READ]);
+    }
 
-            execvp(myArgv[0], myArgv);
+    if (childNum < (progNum - 1))
+    {
+        close (pipeArray[childNum].fd[FD_READ]);
+        //printf("pipe write end that will be used: %d\n", pipeArray[childNum].fd[FD_WRITE]);
+        if (dup2(pipeArray[childNum].fd[FD_WRITE], FD_WRITE) < 0)
+            fprintf(stderr, "There is a bit of problem with rerouting write end for process %d: %s", childNum, strerror(errno));
+        close (pipeArray[childNum].fd[FD_WRITE]);
+    }
+    else
+    {
+        close (pipeArray[childNum - 1].fd[FD_WRITE]);
+    }
 
-            perror("There is a bit of problem with executing your programm");
-            free(myArgv);
-            //break;
-            exit(EXECUTION_FAILURE);
-            //printf("Ended processing %d\n", progCount)
+    execvp(myArgv[0], myArgv);
+
+    perror("There is a bit of problem with executing your programm");
+    free(myArgv);
+    //break;
+    exit(EXECUTION_FAILURE);
+    //printf("Ended processing %d\n", progCount)
 }
 
 int main(int argc, char* argv[])
@@ -221,26 +251,26 @@ int main(int argc, char* argv[])
         char** argPointers;
         argPointers = breakInProgs(cmdBuf, &progNum);
 
-        printf("got %d progs\n", progNum);
-        if (progNum > 0)
-        {
-            printf("Printing ppointers\n");
-            for (int i = 0; i < progNum; i++)
-            {
-                printf("pointer to prog %d: %p\n", i, argPointers[i]);
-            }
-        }
+        // printf("got %d progs\n", progNum);
+        // if (progNum > 0)
+        // {
+        //     printf("Printing ppointers\n");
+        //     for (int i = 0; i < progNum; i++)
+        //     {
+        //         printf("pointer to prog %d: %p\n", i, argPointers[i]);
+        //     }
+        // }
 
         if ((argPointers == NULL) && (progNum > 1))
         {
-            printf("Too much calling programms: cant get enough memory for their call");
+            printf("Too much calling programms: cant get enough memory for their call\n");
             return REALLOC_FAILURE;
         }
 
         struct PipeFd* pipeArray = (struct PipeFd*) calloc(progNum - 1, sizeof(struct PipeFd));
-        for (int childNum = 0; childNum < progNum; childNum++)
+        for (int pipeCount = 0; pipeCount < progNum - 1; pipeCount++)
         {
-            int Error = pipe(pipeArray[childNum].fd);
+            int Error = pipe(pipeArray[pipeCount].fd);
             if (Error)
             {
                 perror("problem with piping: ");
@@ -250,7 +280,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        for (int childNum = 0; childNum < progNum; childNum++)
+        for (int childNum = 0; childNum < progNum - 1; childNum++)
         {
             printf("fd array num %d: read end: %d write end %d\n", childNum, pipeArray[childNum].fd[FD_READ], pipeArray[childNum].fd[FD_WRITE]);
         }
@@ -274,55 +304,21 @@ int main(int argc, char* argv[])
                 childProcess(childNum, cmdBuf, argPointers, progNum, pipeArray);
             else
                 childProcess(childNum, argPointers[childNum - 1] + 1, argPointers, progNum, pipeArray);
-
-            printf("childNum = %d\n", childNum);
-            int myArgc = 0;
-            char** myArgv = 0;
-            if (childNum == 0)
-                myArgv = breakInWords(cmdBuf, &myArgc, argPointers[childNum]);
-            else
-                myArgv = breakInWords(argPointers[childNum - 1] + 1, &myArgc, argPointers[childNum]);
-
-            //printf("prog number %d got %p", childNum, myArgv);
-
-            printf("\ngot: %s, argcount - %d\n", cmdBuf, myArgc);
-
-            printf("printing words:\n");
-            for (int i = 0; i < myArgc; i++)
-                printf("%s\n", myArgv[i]);
-
-            if (childNum > 0)
-            {
-                printf("pipe read end that will be used: %d\n", pipeArray[childNum - 1].fd[FD_READ]);
-                if (dup2(pipeArray[childNum - 1].fd[FD_READ], FD_READ) < 0)
-                    fprintf(stderr, "There is a bit of problem with rerouting read end for process %d: %s", childNum, strerror(errno));
-                close (pipeArray[childNum - 1].fd[FD_READ]);
-            }
-
-            if (childNum != (progNum - 1))
-            {
-                printf("pipe write end that will be used: %d\n", pipeArray[childNum].fd[FD_WRITE]);
-                if (dup2(pipeArray[childNum].fd[FD_WRITE], FD_WRITE) < 0)
-                    fprintf(stderr, "There is a bit of problem with rerouting write end for process %d: %s", childNum, strerror(errno));
-                close (pipeArray[childNum].fd[FD_WRITE]);
-            }
-
-            execvp(myArgv[0], myArgv);
-
-            perror("There is a bit of problem with executing your programm");
-            free(myArgv);
-            //break;
-            exit(EXECUTION_FAILURE);
-            //printf("Ended processing %d\n", progCount)
         }
 
 
-        for (int j = 0; j < progNum; j++)
+        for (int j = 0; j < progNum - 1; j++)
         {
             close(pipeArray[j].fd[FD_WRITE]);
             close(pipeArray[j].fd[FD_READ]);
+            //printf("closed %D and %d\n", pipeArray[j].fd[FD_WRITE], pipeArray[j].fd[FD_READ]);
+        }
+
+        for (int j = 0; j < progNum; j++)
+        {
             int status;
             wait(&status);
+            //printf("waited for %d child\n", j);
         }
         free(argPointers);
         free(cmdBuf);
