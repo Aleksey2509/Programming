@@ -42,12 +42,12 @@ typedef struct FlagStruct
 
 int checkIfExists (char* Filename);
 int myopen(char* FileName, int mode, Flags FlagState);
-int MyWrite (int fd, char* buffer, int size);
-int MyRead (int fd, char* buffer, int size);
-int ReadWrite(char* FileFrom, char* FileTo, Flags FlagState);
-char* GetNewFilePath (char* dirpath, size_t dirLen, char* OldFilePath, int pahtLen, char* NewFilePath);
-char* ReallocateName (char* Name, int length, size_t typeSize, int* currentNameSize);
-int WorkWithDir (char* FileArr[], int Filecount, Flags FlagState);
+int mywrite (int fd, char* buffer, int size);
+int myread (int fd, char* buffer, int size);
+int readWrite(char* FileFrom, char* FileTo, Flags FlagState);
+char* getNewFilePath (char* dirpath, size_t dirLen, char* OldFilePath, int pahtLen, char* NewFilePath);
+char* reallocateName (char* Name, int length, size_t typeSize, int* currentNameSize);
+int workWithDir (char* FileArr[], int Filecount, Flags FlagState);
 int mycp(int argcount, char* arguments[]);
 
 
@@ -67,7 +67,7 @@ int checkIfExists(char* Filename)
 
 //------------------------------------------------------------------------------------------------------------------------
 
-int MyWrite (int fd, char* buffer, int size)
+int mywrite (int fd, char* buffer, int size)
 {
     int countWritten = 0;
     int LeftToWrite = size;
@@ -88,7 +88,7 @@ int MyWrite (int fd, char* buffer, int size)
 
 //------------------------------------------------------------------------------------------------------------------------
 
-int MyRead (int fd, char* buffer, int size)
+int myread (int fd, char* buffer, int size)
 {
     int ReadSize = read(fd, buffer, BUFSIZ);
     if (ReadSize < 0)
@@ -98,51 +98,6 @@ int MyRead (int fd, char* buffer, int size)
 
     return ReadSize;
 }
-
-//------------------------------------------------------------------------------------------------------------------------
-
-int ReadWrite(char* FileFrom, char* FileTo, Flags FlagState)
-{
-    char buffer [BUFSIZ] = { 0 };
-
-    int fdFrom = myopen(FileFrom, READ, FlagState);
-    int fdTo = myopen(FileTo, WRITE, FlagState);
-
-    if (fdFrom == FAILURE || fdTo == FAILURE)
-        return FAILURE;
-
-    if (fdTo == STOPPED)
-        return STOPPED;
-
-    while(1)
-    {
-        int ReadFlag = MyRead(fdFrom, buffer, BUFSIZ);
-        if (ReadFlag == FAILURE)
-        {
-            printf("There appeared an error with reading from %s: %s", FileFrom, strerror(errno));
-            close (fdFrom);
-            close (fdTo);
-            return FAILURE;
-        }
-
-        int WriteFlag = MyWrite(fdTo, buffer, ReadFlag);
-        if (WriteFlag == FAILURE)
-        {
-            printf("Appeared an error with writing to %s: %s", FileTo, strerror(errno));
-            close (fdFrom);
-            close (fdTo);
-            return FAILURE;
-        }
-
-        if (ReadFlag == 0)
-            break;
-    }
-    close (fdFrom);
-    close (fdTo);
-
-    return SUCCESS;
-}
-
 
 //------------------------------------------------------------------------------------------------------------------------
 
@@ -230,7 +185,51 @@ int myopen(char* FileName, int mode, Flags FlagState)
 
 //------------------------------------------------------------------------------------------------------------------------
 
-char* GetNewFilePath (char* dirpath, size_t dirLen, char* OldFilePath, int pathLen, char* NewFilePath)
+int readWrite(char* FileFrom, char* FileTo, Flags FlagState)
+{
+    char buffer [BUFSIZ] = { 0 };
+
+    int fdFrom = myopen(FileFrom, READ, FlagState);
+    int fdTo = myopen(FileTo, WRITE, FlagState);
+
+    if (fdFrom == FAILURE || fdTo == FAILURE)
+        return FAILURE;
+
+    if (fdTo == STOPPED)
+        return STOPPED;
+
+    while(1)
+    {
+        int ReadFlag = myread(fdFrom, buffer, BUFSIZ);
+        if (ReadFlag == FAILURE)
+        {
+            printf("There appeared an error with reading from %s: %s", FileFrom, strerror(errno));
+            close (fdFrom);
+            close (fdTo);
+            return FAILURE;
+        }
+
+        int WriteFlag = mywrite(fdTo, buffer, ReadFlag);
+        if (WriteFlag == FAILURE)
+        {
+            printf("Appeared an error with writing to %s: %s", FileTo, strerror(errno));
+            close (fdFrom);
+            close (fdTo);
+            return FAILURE;
+        }
+
+        if (ReadFlag == 0)
+            break;
+    }
+    close (fdFrom);
+    close (fdTo);
+
+    return SUCCESS;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+
+char* getNewFilePath (char* dirpath, size_t dirLen, char* OldFilePath, int pathLen, char* NewFilePath)
 {
     NewFilePath = strcpy(NewFilePath, dirpath); /* copy to newpath the path to directory where the file should be created */
 
@@ -251,7 +250,7 @@ char* GetNewFilePath (char* dirpath, size_t dirLen, char* OldFilePath, int pathL
 
 //------------------------------------------------------------------------------------------------------------------------
 
-char* ReallocateName (char* Name, int length, size_t typeSize, int* currentNameSize)
+char* reallocateName (char* Name, int length, size_t typeSize, int* currentNameSize)
 {
     Name = (char*)realloc(Name, length * typeSize); /* if path are too long - reallocate */
     *currentNameSize = length;
@@ -261,18 +260,22 @@ char* ReallocateName (char* Name, int length, size_t typeSize, int* currentNameS
 
 //------------------------------------------------------------------------------------------------------------------------
 
-int WorkWithDir (char* FileArr[], int Filecount, Flags FlagState)
+int workWithDir (char* FileArr[], int Filecount, Flags FlagState)
 {
-
-        DIR* folder = opendir(FileArr[Filecount - 1]); /* just for checking whether this is a viable directory */
-
-        if (folder == NULL)
+        struct stat statFile;
+        int Error = lstat (FileArr[Filecount - 1], &statFile);
+        if (Error < 0)
         {
-            perror("Could not open your directory");
+            perror("problem with getting info about your directory");
             return FAILURE;
         }
 
-        closedir(folder);
+        if ((statFile.st_mode & S_IFDIR) == 0)
+        {
+            printf("Last pathname does not lead to a directory\n");
+            return FAILURE;
+        }
+
 
         char* Name = (char*)calloc(BUFSIZ, sizeof(char*)); /* creating a buffer to create a pathname to file in new folder */
         int currentNameSize = BUFSIZ;
@@ -285,12 +288,12 @@ int WorkWithDir (char* FileArr[], int Filecount, Flags FlagState)
 
             if (pathLen + dirLen > currentNameSize)
             {
-                Name = ReallocateName(Name, dirLen + pathLen + 1, sizeof(char), &currentNameSize);
+                Name = reallocateName(Name, dirLen + pathLen + 1, sizeof(char), &currentNameSize);
             }
 
-            Name = GetNewFilePath(FileArr[Filecount - 1], dirLen, FileArr[i], pathLen, Name);
+            Name = getNewFilePath(FileArr[Filecount - 1], dirLen, FileArr[i], pathLen, Name);
 
-            int Result = ReadWrite(FileArr[i], Name, FlagState); /* write from old file to new one */
+            int Result = readWrite(FileArr[i], Name, FlagState); /* write from old file to new one */
             if (Result == SUCCESS && FlagState.vflag == 1)
             {
                 printf("%s -> %s\n", FileArr[i], Name); /* verbose flag mode */
@@ -341,11 +344,11 @@ int mycp(int argcount, char* arguments[])
     if (argcount - optind > 2)
     {
         //printf("argcount = %d, optind = %d\n", argcount, optind);
-        WorkWithDir(arguments + optind, argcount - optind, FlagState);
+        workWithDir(arguments + optind, argcount - optind, FlagState);
     }
     else
     {
-        int Result = ReadWrite( arguments[optind], arguments[optind + 1], FlagState);
+        int Result = readWrite( arguments[optind], arguments[optind + 1], FlagState);
 
         if (Result == SUCCESS && FlagState.vflag == 1)
         {
