@@ -133,31 +133,30 @@ int main(int argc, char* argv[])
     if (judge == 0)
     {
         Judge(N, id);
+        return 0;
     }
 
     pid_t runnersPid;
-    if ( judge != 0 )
-        for (int i = 0; i < N; i++)
-        {
-            runnersPid = fork();
-            if (runnersPid < 0)
-                printf("Something gone wrong when forking for a runner %d: %s", i, strerror(errno));
-            
-            if (runnersPid == 0)
-            {
-                Runner(N, id, i);
-                break;
-            }
-        }
-
-    if ((judge != 0) && (runnersPid != 0))
+    for (int i = 0; i < N; i++)
     {
-        for (int i = 0; i < N + 1; i++)
+        runnersPid = fork();
+        if (runnersPid < 0)
+            printf("Something gone wrong when forking for a runner %d: %s", i, strerror(errno));
+        
+        if (runnersPid == 0)
         {
-            int status;
-            wait(&status);
-            //printf("\nwaited %d\n", i);
+            Runner(N, id, i);
+            return 0;
         }
-        msgctl(id, IPC_RMID, 0);
     }
+
+
+    for (int i = 0; i < N + 1; i++)
+    {
+        int status;
+        wait(&status);
+        //printf("\nwaited %d\n", i);
+    }
+    msgctl(id, IPC_RMID, 0);
+
 }
