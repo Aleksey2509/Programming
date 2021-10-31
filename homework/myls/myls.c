@@ -106,6 +106,9 @@ char* getAccessInfo (char* access, mode_t mode)
     for (int i = 0; i < 10; i++)
         access[i] = '-';
 
+    if (S_ISLNK(mode))
+        access [0] = 'l';
+
     if (mode & S_IFDIR)
         access [0] = 'd';
 
@@ -176,6 +179,13 @@ int myls (char* dirPath, DIR* newDir, int fileCount)
     char* filePath = (char*)calloc(BUFSIZ, sizeof(char));
     char* dirv[BUFFSIZ] = { 0 };
 
+    // struct stat statDir;
+    // if (lstat (dirPath, &statDir) != 0)
+    // {
+    //     printf("Some error occured when getting stat of %s: %s\n", dirPath, strerror(errno));
+    //     return 0;
+    // }
+
     if (FlagState.lflag || FlagState.nflag)
         printf("total %llu\n", getBlockSize(dirPath, newDir));
 
@@ -211,7 +221,17 @@ int myls (char* dirPath, DIR* newDir, int fileCount)
         if (FlagState.lflag || FlagState.nflag)
             printFileInfo(&statFile);
 
-        printf("%s\n", newEntry->d_name);
+        printf("%s", newEntry->d_name);
+        if ((FlagState.lflag || FlagState.nflag) &&  S_ISLNK(statFile.st_mode))
+        {
+            char nameBuf [BUFFSIZ] = { 0 };
+            int nameLen = readlink(filePath, nameBuf, BUFFSIZ);
+            if (nameLen < 0)
+                printf("appeared an error while getting the name pointed by symbolic link %s: %s", filePath, strerror(errno));
+            printf(" -> %s\n", nameBuf);
+        }
+        else
+            printf("\n");
 
         memset(filePath, 0, BUFFSIZ);
     }
@@ -246,7 +266,9 @@ int printFileInfo (const struct stat* statFile)
     getAccessInfo(access, statFile->st_mode);
 
     if (FlagState.nflag)
+    {
         printf("%s %2hu %u %u %10llu %s %llu ", access, statFile->st_nlink, statFile->st_uid, statFile->st_gid, statFile->st_size, time, statFile->st_blocks);
+    }
     else
     {
         struct passwd* userinfo = getpwuid(statFile->st_uid);
