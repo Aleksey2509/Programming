@@ -103,7 +103,11 @@ int myread (int fd, char* buffer, int size)
 
 int myopen(char* FileName, int mode, Flags FlagState)
 {
-    assert ( (mode == READ) || (mode == WRITE)); /* check whether func is used properly  */
+    if ((mode != READ) && (mode != WRITE))
+    {
+        printf("myopen is not used properly\n"); /* check whether func is used properly  */
+        return STOPPED;
+    }
 
     if (mode == WRITE)
     {

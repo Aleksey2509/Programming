@@ -9,16 +9,13 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#define BUFFSIZE 4096
+
 enum DUP_CONSTS
 {
     FD_READ = 0,
     FD_WRITE = 1
 };
-
-const int PROGS_MAX = 20;
-const int ARGS_MAX = 20;
-
-#define BUFFSIZE 4096
 
 enum ERRORS
 {
@@ -29,10 +26,15 @@ enum ERRORS
     OK = 0
 };
 
+const int PROGS_MAX = 20;
+const int ARGS_MAX = 20;
+
 struct PipeFd
 {
     int fd[2];
 };
+
+//-----------------------------------------------------------------------------------------------------------------------
 
 pid_t myfork()
 {
@@ -55,91 +57,7 @@ int mypipe(int fd[2])
     return OK;
 }
 
-char** parseIntoProgramms(char* cmdBuf, int* progNum)
-{
-    char** progPointer = (char**)calloc(PROGS_MAX, sizeof(char*));
-    char* vertPtr = 0;
-
-    int progCounter = 0;
-
-    while ((vertPtr = strchr(cmdBuf, '|')) != 0)
-    {
-        //printf("HERE\n");
-        progPointer[progCounter++] = vertPtr;
-        if (progCounter == (PROGS_MAX - 1))
-        {
-            char** tmp = (char**)realloc(progPointer, 2 * PROGS_MAX * sizeof(char *));
-                if (!tmp)
-                {
-                    *progNum = progCounter;
-                    return NULL;
-                }
-                progPointer = tmp;
-        }
-        cmdBuf = vertPtr + 1;
-    }
-    *progNum = ++progCounter;
-
-    return progPointer;
-}
-
-char** parseIntoArguments(char* cmdBuf, int* myArgc, char* argEnd)
-{
-    char** myArgv = (char**)calloc(ARGS_MAX, sizeof(char*));
-    // printf("In func: allocated %p\n", *myArgv);
-    // return 0;
-    char* wordPtr = 0;
-    int nWords = 0;
-
-    int spaceNum = 0;
-    char forSkip [BUFFSIZE] = { 0 };
-    while(cmdBuf[0] == ' ')
-    {
-        cmdBuf++;
-    }
-
-    while ( ((cmdBuf < argEnd) || (argEnd == NULL)) && ((wordPtr = strchr(cmdBuf, ' ')) != 0) && ((wordPtr < argEnd) || (argEnd == NULL)) )
-    {
-
-        myArgv[nWords] = (char*)calloc((size_t)(wordPtr - cmdBuf + 1), sizeof(char));
-        strncpy(myArgv[nWords], cmdBuf, ((size_t)wordPtr - (size_t)cmdBuf));
-        //printf("got %s\n", myArgv[nWords]);
-        nWords++;
-
-        //printf("before: cmdbuf - %p, left in cmdbuf - %s, wordptr - %p\n", cmdBuf, cmdBuf, wordPtr); 
-        cmdBuf = wordPtr + 1;
-        //printf("after: cmdbuf - %p, left in cmdbuf - %s\n", cmdBuf, cmdBuf);
-
-        while(cmdBuf[0] == ' ')
-        {
-            cmdBuf++;
-        }
-
-    }
-
-    //printf("leftover - %s\n", cmdBuf);
-    if (argEnd == NULL)
-    {
-        if (cmdBuf[0] != '\0')
-        {
-            myArgv[nWords] = strdup(cmdBuf);
-            nWords++;
-        }
-    }
-    else
-    {
-        if (cmdBuf[0] != '|')
-        {
-            myArgv[nWords] = strndup(cmdBuf, (unsigned long long)argEnd - (unsigned long long)cmdBuf);
-            nWords++;
-        }
-    }
-    
-
-    *myArgc = nWords;
-
-    return myArgv;
-}
+//-----------------------------------------------------------------------------------------------------------------------
 
 int closeFd (struct PipeFd* pipeArray, long long size, int childNum)
 {
@@ -156,6 +74,92 @@ int closeFd (struct PipeFd* pipeArray, long long size, int childNum)
     return 0;
 }
 
+char** parseIntoProgramms(char* cmdBuf, int* progNum)
+{
+    char** progPointer = (char**)calloc(PROGS_MAX, sizeof(char*));
+    char* ptrToVert;
+    int progCounter = 0;
+
+    progPointer[progCounter++] = cmdBuf;
+    while ((ptrToVert = strchr(cmdBuf, '|')) != 0)
+    {
+        progPointer[progCounter++] = ptrToVert + 1;
+        if (progCounter == (PROGS_MAX - 1))
+        {
+            char** tmp = (char**)realloc(progPointer, 2 * PROGS_MAX * sizeof(char *));
+                if (!tmp)
+                {
+                    *progNum = progCounter;
+                    return NULL;
+                }
+                progPointer = tmp;
+        }
+        cmdBuf = ptrToVert + 1;
+    }
+    *progNum = progCounter;
+
+    return progPointer;
+}
+
+//-----------------------------------------------------------------------------------------------------------------------
+
+char** parseIntoArguments(char* argBuf, int* argc, char* argEnd)
+{
+    char** argv = (char**)calloc(ARGS_MAX, sizeof(char*));
+    char* wordPtr = 0;
+    int nWords = 0;
+    //printf("argstart - %s, argend - %s\n", argBuf, argEnd);
+
+    int spaceNum = 0;
+    while(argBuf[0] == ' ')
+    {
+        argBuf++;
+    }
+
+    while ( ((argBuf < argEnd) || (argEnd == NULL)) && ((wordPtr = strchr(argBuf, ' ')) != 0) && ((wordPtr < argEnd) || (argEnd == NULL)) )
+    {
+
+        argv[nWords] = (char*)calloc((size_t)(wordPtr - argBuf + 1), sizeof(char));
+        strncpy(argv[nWords], argBuf, ((size_t)wordPtr - (size_t)argBuf));
+        //printf("got %s\n", argv[nWords]);
+        nWords++;
+
+        //printf("before: cmdbuf - %p, left in cmdbuf - %s, wordptr - %p\n", argBuf, argBuf, wordPtr); 
+        argBuf = wordPtr + 1;
+        //printf("after: cmdbuf - %p, left in cmdbuf - %s\n", argBuf, argBuf);
+
+        while(argBuf[0] == ' ')
+        {
+            argBuf++;
+        }
+
+    }
+
+    //printf("leftover - %s\n", cmdBuf);
+    if (argEnd == NULL)
+    {
+        if (argBuf[0] != '\0')
+        {
+            argv[nWords] = strdup(argBuf);
+            nWords++;
+        }
+    }
+    else
+    {
+        if (argBuf[0] != '|')
+        {
+            argv[nWords] = strndup(argBuf, (unsigned long long)argEnd - (unsigned long long)argBuf - 1);
+            nWords++;
+        }
+    }
+
+    *argc = nWords;
+
+    return argv;
+}
+
+//-----------------------------------------------------------------------------------------------------------------------
+
 int childProcess (int childNum, char* cmdBuf, char** argPointers, int progNum, struct PipeFd* pipeArray)
 {
     if (childNum > 1)
@@ -164,9 +168,8 @@ int childProcess (int childNum, char* cmdBuf, char** argPointers, int progNum, s
         closeFd(pipeArray + childNum + 1, progNum - (childNum + 2), childNum);
 
     //printf("childNum = %d, progNum = %d\n", childNum, progNum);
-    int myArgc = 0;
-    char** myArgv = 0;
-    myArgv = parseIntoArguments(cmdBuf, &myArgc, argPointers[childNum]);
+    int childArgc = 0;
+    char** childArgv = parseIntoArguments(cmdBuf, &childArgc, argPointers[childNum + 1]);
 
     //printf("prog number %d got %p", childNum, myArgv);
 
@@ -203,16 +206,18 @@ int childProcess (int childNum, char* cmdBuf, char** argPointers, int progNum, s
         close (pipeArray[childNum - 1].fd[FD_WRITE]);
     }
 
-    execvp(myArgv[0], myArgv);
+    execvp(childArgv[0], childArgv);
 
-    perror("There is a bit of problem with executing your programm");
-    free(myArgv);
+    printf("There is a bit of problem with executing programm: %s: %s\n",childArgv[0], strerror(errno));
+    free(childArgv);
     exit(EXECUTION_FAILURE);
     //break;
     //printf("Ended processing %d\n", progCount)
 }
 
-int myshell (int argc, char* argv[])
+//-----------------------------------------------------------------------------------------------------------------------
+
+int myshell ()
 {
     const char Prompt[] = "->";
 
@@ -227,17 +232,20 @@ int myshell (int argc, char* argv[])
         }
 
         int progNum = 0;
-        char** argPointers;
-        argPointers = parseIntoProgramms(cmdBuf, &progNum);
+        char** argPointers = parseIntoProgramms(cmdBuf, &progNum);
 
         // printf("got %d progs\n", progNum);
         // if (progNum > 0)
         // {
-        //     printf("Printing ppointers\n");
+        //     printf("\nPrinting ppointers\n");
         //     for (int i = 0; i < progNum; i++)
         //     {
         //         printf("pointer to prog %d: %p\n", i, argPointers[i]);
         //     }
+        // }
+        // for (int i = 0; i < progNum; i++)
+        // {
+        //     printf("%s\n", argPointers[i]);
         // }
 
         if ((argPointers == NULL) && (progNum > 1))
@@ -247,6 +255,7 @@ int myshell (int argc, char* argv[])
         }
 
         struct PipeFd* pipeArray = (struct PipeFd*) calloc(progNum - 1, sizeof(struct PipeFd));
+
         for (int pipeCount = 0; pipeCount < progNum - 1; pipeCount++)
         {
             int Error = pipe(pipeArray[pipeCount].fd);
@@ -279,10 +288,7 @@ int myshell (int argc, char* argv[])
 
         if (childPid == 0)
         {
-            if (childNum == 0)
-                childProcess(childNum, cmdBuf, argPointers, progNum, pipeArray);
-            else
-                childProcess(childNum, argPointers[childNum - 1] + 1, argPointers, progNum, pipeArray);
+            childProcess(childNum, argPointers[childNum], argPointers, progNum, pipeArray);
         }
 
 
@@ -308,5 +314,5 @@ int myshell (int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
-    myshell(argc, argv);
+    myshell();
 }
