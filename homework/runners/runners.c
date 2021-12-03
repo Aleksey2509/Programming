@@ -22,7 +22,6 @@
 typedef struct msgbuf
 {
     long mtype;
-
     char* mtext;
 }Message;
 

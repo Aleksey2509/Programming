@@ -37,19 +37,17 @@ typedef struct FlagStruct
     int rflag;
 }Flags;
 
-static Flags FlagState = {0};
-
-int printFileInfo (const struct stat* statFile);
+int printFileInfo (const struct stat* statFile, Flags flagState);
 int getFilePath (const char* dirPath, char* filePath, const char* fileName);
-int parseDir(int argcount, char* arguments[]);
-int parseCurrentDir(int argcount, char* arguments[]);
-blkcnt_t getBlockSize (char* dirPath, DIR* newDir);
-int myls (char* dirPath, DIR* newDir, int argcount);
+int parseDir(int argcount, char* arguments[], Flags flagState);
+int parseCurrentDir(int argcount, char* arguments[], Flags flagState);
+blkcnt_t getBlockSize (char* dirPath, DIR* newDir, Flags flagState);
+int myls (char* dirPath, DIR* newDir, int argcount, Flags flagState);
 
 int getFilePath (const char* dirPath, char* filePath, const char* fileName)
 {
     //printf("dirpath - %s, filename - %s\n", dirPath, fileName);
-    fflush(stdout);
+    //fflush(stdout);
     filePath = strcpy(filePath, dirPath);
     int dirLen = strlen(dirPath);
 
@@ -63,7 +61,7 @@ int getFilePath (const char* dirPath, char* filePath, const char* fileName)
     return 0;
 }
 
-int parseDir(int argcount, char* arguments[])
+int parseDir(int argcount, char* arguments[], Flags flagState)
 {
     DIR* newDir;
     for (int i = 0; i < argcount; i++)
@@ -73,14 +71,14 @@ int parseDir(int argcount, char* arguments[])
             if (i != 0)
                 printf("\n");
             printf("%s:\n", arguments[i]);
-            myls(arguments[i], newDir, argcount);
+            myls(arguments[i], newDir, argcount, flagState);
             closedir(newDir);
         }
     }
     return 0;
 }
 
-int parseCurrentDir(int argcount, char* arguments[])
+int parseCurrentDir(int argcount, char* arguments[], Flags flagState)
 {
     DIR* newDir;
     for (int i = 0; i < argcount; i++)
@@ -90,7 +88,7 @@ int parseCurrentDir(int argcount, char* arguments[])
             if (i != 0)
                 printf("\n");
             printf("%s:\n", arguments[i]);
-            myls(arguments[i], newDir, argcount);
+            myls(arguments[i], newDir, argcount, flagState);
             closedir(newDir);
         }
         else
@@ -142,7 +140,7 @@ char* getAccessInfo (char* access, mode_t mode)
     return access;
 }
 
-blkcnt_t getBlockSize (char* dirPath, DIR* newDir)
+blkcnt_t getBlockSize (char* dirPath, DIR* newDir, Flags flagState)
 {
     struct dirent* newEntry;
     struct stat statFile;
@@ -151,7 +149,7 @@ blkcnt_t getBlockSize (char* dirPath, DIR* newDir)
 
     while( (newEntry = readdir(newDir)) != NULL)
     {
-        if (!FlagState.aflag)
+        if (!flagState.aflag)
         {
             if (newEntry->d_name[0] == '.')
                 continue;
@@ -172,7 +170,7 @@ blkcnt_t getBlockSize (char* dirPath, DIR* newDir)
     return blockCount;
 }
 
-int myls (char* dirPath, DIR* newDir, int fileCount)
+int myls (char* dirPath, DIR* newDir, int fileCount, Flags flagState)
 {
     struct dirent* newEntry;
     struct stat statFile;
@@ -186,14 +184,14 @@ int myls (char* dirPath, DIR* newDir, int fileCount)
     //     return 0;
     // }
 
-    if (FlagState.lflag || FlagState.nflag)
-        printf("total %llu\n", getBlockSize(dirPath, newDir));
+    if (flagState.lflag || flagState.nflag)
+        printf("total %llu\n", getBlockSize(dirPath, newDir, flagState));
 
     int entryCount = 0;
 
     while( (newEntry = readdir(newDir)) != NULL)
     {
-        if (!FlagState.aflag)
+        if (!flagState.aflag)
         {
             if (newEntry->d_name[0] == '.')
                 continue;
@@ -201,7 +199,7 @@ int myls (char* dirPath, DIR* newDir, int fileCount)
 
         getFilePath(dirPath, filePath, newEntry->d_name);
         //printf("filePath = %s\n", filePath);
-        if ((FlagState.rflag) && (strcmp(newEntry->d_name, ".") != 0) && (strcmp(newEntry->d_name, "..") != 0))
+        if ((flagState.rflag) && (strcmp(newEntry->d_name, ".") != 0) && (strcmp(newEntry->d_name, "..") != 0))
         {
             //printf("%s - filePath\n", filePath);
             dirv[entryCount] = strdup(filePath);
@@ -215,14 +213,14 @@ int myls (char* dirPath, DIR* newDir, int fileCount)
             continue;
         }
 
-        if (FlagState.iflag)
+        if (flagState.iflag)
             printf("%10llu ", statFile.st_ino);
 
-        if (FlagState.lflag || FlagState.nflag)
-            printFileInfo(&statFile);
+        if (flagState.lflag || flagState.nflag)
+            printFileInfo(&statFile, flagState);
 
         printf("%s", newEntry->d_name);
-        if ((FlagState.lflag || FlagState.nflag) &&  S_ISLNK(statFile.st_mode))
+        if ((flagState.lflag || flagState.nflag) &&  S_ISLNK(statFile.st_mode))
         {
             char nameBuf [BUFFSIZ] = { 0 };
             int nameLen = readlink(filePath, nameBuf, BUFFSIZ);
@@ -238,14 +236,14 @@ int myls (char* dirPath, DIR* newDir, int fileCount)
 
     free(filePath);
 
-    if (FlagState.rflag)
+    if (flagState.rflag)
     {
         printf("\n");
         // for (int j = 0; j < entryCount; j++)
         // {
         //     printf("\n%s\n", dirv[j]);
         // }
-        parseDir(entryCount, dirv);
+        parseDir(entryCount, dirv, flagState);
     }
 
     for (int j = 0; j < entryCount; j++)
@@ -256,7 +254,7 @@ int myls (char* dirPath, DIR* newDir, int fileCount)
     return 0;
 }
 
-int printFileInfo (const struct stat* statFile)
+int printFileInfo (const struct stat* statFile, Flags flagState)
 {
 
     char* time = ctime(&(statFile->st_mtimespec.tv_sec));
@@ -265,7 +263,7 @@ int printFileInfo (const struct stat* statFile)
     char* access = (char*)calloc(12, sizeof(char));
     getAccessInfo(access, statFile->st_mode);
 
-    if (FlagState.nflag)
+    if (flagState.nflag)
     {
         printf("%s %2hu %u %u %10llu %s %llu ", access, statFile->st_nlink, statFile->st_uid, statFile->st_gid, statFile->st_size, time, statFile->st_blocks);
     }
@@ -283,34 +281,35 @@ int printFileInfo (const struct stat* statFile)
 int main(int argc, char* argv[])
 {
     int newFlag = 0;
+    Flags flagState = {0};
 
     while ((newFlag = getopt_long (argc, argv, flags, longopts, NULL)) != -1)
     switch (newFlag)
     {
         case 'l':
-            FlagState.lflag = 1;
+            flagState.lflag = 1;
             break;
         case 'a':
-            FlagState.aflag = 1;
+            flagState.aflag = 1;
             break;
         case 'i':
-            FlagState.iflag = 1;
+            flagState.iflag = 1;
             break;
         case 'n':
-            FlagState.nflag = 1;
+            flagState.nflag = 1;
             break;
         case 'R':
-            FlagState.rflag = 1;
+            flagState.rflag = 1;
             break;
     }
 
     if (argc - optind < 1)
     {
         DIR* newDir = opendir("./");
-        myls("./", newDir, 1);
+        myls("./", newDir, 1, flagState);
     }
     else
-        parseCurrentDir(argc - optind, argv + optind);
+        parseCurrentDir(argc - optind, argv + optind, flagState);
 
     return 0;
 }
