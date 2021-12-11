@@ -6,3 +6,7 @@ compile:
 
 run:
 	./myshell
+
+test:
+	$(CC) -g test.c -l$(RLLIB) -o test
+	./test

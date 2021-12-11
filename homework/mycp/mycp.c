@@ -86,6 +86,21 @@ int myread (int fd, char* buffer, int size)
 
 //------------------------------------------------------------------------------------------------------------------------
 
+int checkIfDir(char* path)
+{
+    struct stat statFile;
+    int error = stat (path, &statFile);
+    if (error < 0)
+    {
+        perror("problem with getting info about your directory");
+        return FAILURE;
+    }
+
+    return (statFile.st_mode & S_IFDIR);
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+
 int interactive(char* fileName)
 {
     int fd = open(fileName, O_WRONLY | O_CREAT | O_EXCL);
@@ -225,7 +240,7 @@ char* reallocateName (char* name, int length, int* currentNameSize)
 {
     char* tmp = (char*)realloc(name, length);
     if (tmp == NULL)
-        return NULL;
+        return name;
 
     name = tmp; /* if path are too long - reallocate */
     *currentNameSize = length;
@@ -237,21 +252,6 @@ char* reallocateName (char* name, int length, int* currentNameSize)
 
 int workWithDir (char* fileArr[], int fileCount, Flags flagState)
 {
-        struct stat statFile;
-        int error = stat (fileArr[fileCount - 1], &statFile);
-        if (error < 0)
-        {
-            perror("problem with getting info about your directory");
-            return FAILURE;
-        }
-
-        if ((statFile.st_mode & S_IFDIR) == 0)
-        {
-            fprintf(stderr, "Last pathname does not lead to a directory\n");
-            return FAILURE;
-        }
-
-
         char* name = malloc(BUFSIZ); /* creating a buffer to create a pathname to file in new folder */
         int currentNameSize = BUFSIZ;
 
@@ -261,11 +261,7 @@ int workWithDir (char* fileArr[], int fileCount, Flags flagState)
         {
             int pathLen = strlen(fileArr[i]);
             name = getNewFilePath(fileArr[fileCount - 1], dirLen, fileArr[i], pathLen, name, currentNameSize);
-            if (name == NULL)
-                {
-                    fprintf(stderr, "name of file %s is too long", fileArr[i]);
-                    continue;
-                }
+             
 
             int result = fileReadWrite(fileArr[i], name, flagState); /* write from old file to new one */
         }
@@ -311,14 +307,22 @@ int mycp(int argcount, char* arguments[])
     }
 
     int result;
-    if (argcount - optind > 2)
+    int lastDir = checkIfDir(arguments[argcount - 1]);
+    if (lastDir < 0)
     {
-        //printf("argcount = %d, optind = %d\n", argcount, optind);
-        result = workWithDir(arguments + optind, argcount - optind, flagState);
+        perror("problem with getting info about your directory");
+        return FAILURE;
+    }
+    else if (lastDir == 0)
+    {
+        if (argcount - optind > 2)
+            return FAILURE;
+        else
+            result = fileReadWrite( arguments[optind], arguments[optind + 1], flagState);
     }
     else
     {
-        result = fileReadWrite( arguments[optind], arguments[optind + 1], flagState);
+        result = workWithDir(arguments + optind, argcount - optind, flagState);
     }
 
     return result;
