@@ -88,15 +88,14 @@ int myread (int fd, char* buffer, int size)
 
 int checkIfDir(char* path)
 {
-    struct stat statFile;
+    printf("path to pssible dir - %s\n", path);
+    struct stat statFile = { 0 };
     int error = stat (path, &statFile);
-    if (error < 0)
-    {
-        perror("problem with getting info about your directory");
-        return FAILURE;
-    }
+    printf("error - %d, can write - %d, is dir - %d, strerror - %s\n", error, statFile.st_mode & S_IWRITE, statFile.st_mode & S_IFDIR, strerror(errno));
+    if ((error == 0) && ((statFile.st_mode & S_IWRITE) == 0))
+        return -1;
 
-    return (statFile.st_mode & S_IFDIR);
+    return statFile.st_mode & S_IFDIR;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -214,8 +213,8 @@ char* getNewFilePath (char* dirpath, size_t dirLen, char* oldFilePath, int pathL
         {
             newFilePath = reallocateName(newFilePath, dirLen + pathLen + 1, &currentNameSize);
         }
-    if (newFilePath == NULL)
-        return NULL;
+    if (currentNameSize == 0)
+        return oldFilePath;
 
     newFilePath = strcpy(newFilePath, dirpath); /* copy to newpath the path to directory where the file should be created */
 
@@ -240,7 +239,10 @@ char* reallocateName (char* name, int length, int* currentNameSize)
 {
     char* tmp = (char*)realloc(name, length);
     if (tmp == NULL)
+    {
+        *currentNameSize = 0;
         return name;
+    }
 
     name = tmp; /* if path are too long - reallocate */
     *currentNameSize = length;
@@ -261,7 +263,13 @@ int workWithDir (char* fileArr[], int fileCount, Flags flagState)
         {
             int pathLen = strlen(fileArr[i]);
             name = getNewFilePath(fileArr[fileCount - 1], dirLen, fileArr[i], pathLen, name, currentNameSize);
-             
+            //printf("got name %s\n", name);
+            if (currentNameSize == 0)
+            {
+                fprintf(stderr, "the filename of %s is too big\n", name);
+                currentNameSize = BUFSIZ;
+                continue;
+            }
 
             int result = fileReadWrite(fileArr[i], name, flagState); /* write from old file to new one */
         }
@@ -278,7 +286,7 @@ int mycp(int argcount, char* arguments[])
     if (argcount < 3)
     {
         fprintf(stderr, "Not enough arguments\n");
-        return 0;
+        return FAILURE;
     }
     Flags flagState = { 0 };
 
@@ -308,21 +316,25 @@ int mycp(int argcount, char* arguments[])
 
     int result;
     int lastDir = checkIfDir(arguments[argcount - 1]);
-    if (lastDir < 0)
+    printf("is last dir - %d\n", lastDir);
+    if (lastDir > 0)
     {
-        perror("problem with getting info about your directory");
-        return FAILURE;
+        //printf("working with dir\n");
+        result = workWithDir(arguments + optind, argcount - optind, flagState);
     }
     else if (lastDir == 0)
     {
         if (argcount - optind > 2)
+        {
+            fprintf(stderr, "wrong use: more than two arguments but last one is not a directory\n");
             return FAILURE;
+        }
         else
             result = fileReadWrite( arguments[optind], arguments[optind + 1], flagState);
     }
     else
     {
-        result = workWithDir(arguments + optind, argcount - optind, flagState);
+        fprintf(stderr, "there apperead a problem with writing to last directory: you don't have rights\n");
     }
 
     return result;

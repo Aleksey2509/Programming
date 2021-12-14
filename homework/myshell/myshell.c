@@ -130,23 +130,21 @@ int childProcess (int childNum, char* cmdBuf, char** argPointers, int progNum, i
 
     if (fd[FD_READ] != FD_READ)
     {
-        if (dup2(fd[FD_READ], FD_READ) < 0)
-            fprintf(stderr, "There is a bit of problem with rerouting read end for process %d: %s", childNum, strerror(errno));
-
+        dup2(fd[FD_READ], FD_READ);
         close (fd[FD_READ]);
+
     }
 
     if (fd[FD_WRITE] != FD_WRITE)
     {
-        if (dup2(fd[FD_WRITE], FD_WRITE) < 0)
-            fprintf(stderr, "There is a bit of problem with rerouting write end for process %d: %s", childNum, strerror(errno));
-
+        dup2(fd[FD_WRITE], FD_WRITE);
         close (fd[FD_WRITE]);
     }
 
     execvp(childArgv[0], childArgv);
 
     printf("There is a bit of problem with executing programm: %s: %s\n",childArgv[0], strerror(errno));
+
     free(childArgv);
     exit(EXECUTION_FAILURE);
 
@@ -228,6 +226,8 @@ int myshell ()
 
     return 0;
 }
+
+//-----------------------------------------------------------------------------------------------------------------------
 
 int main(int argc, char* argv[])
 {
