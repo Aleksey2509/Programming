@@ -36,28 +36,28 @@ struct CharInfo
     char takenBuf[60];
 };
 
-void P( int sem_id, int ind, short value )
+void P( int semId, int semNum, short value )
 {
-    struct sembuf buf = {ind, -value, 0};
-    semop(sem_id, &buf, 1);
+    struct sembuf operation = {semNum, -value, 0};
+    semop(semId, &operation, 1);
 }
 
-void V( int sem_id, int ind, short value )
+void V( int semId, int semNum, short value )
 {
-    struct sembuf buf = {ind, value, 0};
-    semop(sem_id, &buf, 1);
+    struct sembuf operation = {semNum, value, 0};
+    semop(semId, &operation, 1);
 }
 
-void Z( int sem_id, int ind )
+void Z( int semId, int semNum )
 {
-    struct sembuf buf = {ind, 0, 0};
-    semop(sem_id, &buf, 1);
+    struct sembuf operation = {semNum, 0, 0};
+    semop(semId, &operation, 1);
 }
 
-int Z_NO_WAIT( int sem_id, int ind )
+int noWaitZ( int semId, int semNum )
 {
-    struct sembuf buf = {ind, 0, IPC_NOWAIT};
-    return semop(sem_id, &buf, 1);
+    struct sembuf operation = {semNum, 0, IPC_NOWAIT};
+    return semop(semId, &operation, 1);
 }
 
 int ifFirstToTake(struct CharInfo taken, char letter)
@@ -134,7 +134,7 @@ int child(int myPid, const char* toSing)
             V(semId, CURRENT_CHAR_SEM, 1);
             current++;
 
-            while(Z_NO_WAIT(semId, SLEEP_AMOUNT) != 0)
+            while(noWaitZ(semId, SLEEP_AMOUNT) != 0)
             {
                 P(semId, SLEEP_AMOUNT, 1);
                 V(semId, WAIT_FOR_NEXT, 1);
@@ -149,7 +149,7 @@ int child(int myPid, const char* toSing)
             V(semId, CURRENT_CHAR_SEM, 1);
             current++;
 
-            while(Z_NO_WAIT(semId, SLEEP_AMOUNT) != 0)
+            while(noWaitZ(semId, SLEEP_AMOUNT) != 0)
             {
                 P(semId, SLEEP_AMOUNT, 1);
                 V(semId, WAIT_FOR_NEXT, 1);
