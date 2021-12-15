@@ -68,28 +68,29 @@ int Captain(int semid, int passengersCount, int yachtCap, int tripNum, int trapC
     struct sembuf reGet [] = {{TO_GET_ONTO, maxCrowd, 0}};
     struct sembuf allowToParticipate [] = {TO_PARTICIPATE, passengersCount, 0};
     struct sembuf declareEnding [] = {LAST_TRIP_WARNING, 1, 0};
-    struct sembuf tripStart [] = {TRIPPING, 1, 0};
-    struct sembuf tripEnd [] = {TRIPPING, -1, 0};
+    struct sembuf tripStart [] = {TRIPPING, maxCrowd, 0};
+    struct sembuf tripEnd [] = {TRIPPING, 0, 0};
 
     for (int i = 0; i < tripNum; i++)
     {
         printf("Hey, I am the captain, waiting for people to get on board\n");
         semop(semid, allowToParticipate, 1);
         semop(semid, reGet, 1);
-        semop(semid, waitFull, 1);
+        semop(semid, waitFull, 2);
         printf("Hey, I am the captain, my yacht is full / all the people are on board\n");
+
         printf("Starting trip\n");
         semop(semid, tripStart, 1);
 
-        usleep(500000);
+        //sleep(1);
 
-        printf("Ending trip\n");
         semop(semid, tripEnd, 1);
+        printf("Ending trip\n");
 
         printf("Hey, I am the captain, did a lap %D\n", i + 1);
         semop(semid, arriveAtBeach, 1);
-        semop(semid, waitEmpty, 1);
-        printf("Hey, I am the captain, my yacht is empty\n");
+        // semop(semid, waitEmpty, 1);                           // <-- remove the comment at the start of line so that all the passengers
+        // printf("Hey, I am the captain, my yacht is empty\n"); // <-- had to leave the yacht first and only then new would come
         if (i == tripNum - 1)
         {
             semop(semid, declareEnding, 1);
@@ -107,15 +108,15 @@ int Passenger(int semid, pid_t myid, int tripNum, int trapCap)
     struct sembuf getOnYacht [] = {{THE_TRAP, -1, IPC_NOWAIT}, {THE_YACHT, -1, IPC_NOWAIT}, {THE_BANK, -1, IPC_NOWAIT}, {TO_GET_ONTO, -1, IPC_NOWAIT}};
     struct sembuf freeTrap []   = {THE_TRAP, 1, 0};
     struct sembuf leaveYacht [] = {{THE_TRAP, -1, 0}, {THE_YACHT, 1, 0}, {THE_BANK, 1, 0}, {TO_LEAVE, -1, 0}};
+    struct sembuf trip [] = {TRIPPING, -1, 0};
 
     printf("Hey, I am a passenger %d\n", myid);
-
-    //usleep(500000);
 
     while(1)
     {
         int flag = 0;
-
+        // if (myid < 5)
+        //     sleep(2);
         while ((semop(semid, askForPermission, 1)) < 0 && (errno == EAGAIN))
         {
             if (semctl(semid, LAST_TRIP_WARNING, GETVAL))
@@ -125,7 +126,7 @@ int Passenger(int semid, pid_t myid, int tripNum, int trapCap)
         }
 
         while ((semop(semid, getOnYacht, 4) < 0) && (errno == EAGAIN))
-            if (semctl(semid, TRIPPING, GETVAL))
+            if (semctl(semid, TO_GET_ONTO, GETVAL) == 0)
             {
                 flag = 1;
                 break;
@@ -136,13 +137,16 @@ int Passenger(int semid, pid_t myid, int tripNum, int trapCap)
 
         printf("Hey, I am passenger %d, got onto yacht\n", myid);
         semop(semid, freeTrap, 1);
-        printf("Hey, I am passenger %d, freed the trap\n", myid);
+        //printf("Hey, I am passenger %d, freed the trap\n", myid);
+
+        semop(semid, trip, 1);
+        printf("Hey, I am passenger %d, sitting in a ship, tripping\n", myid);
 
         semop(semid, leaveYacht, 4);
-        printf("Hey, I am passenger %d, leaving the yacht\n", myid);
+        printf("Hey, I am passenger %d, left the yacht\n", myid);
         //sleep(2);
         semop(semid, freeTrap, 1);
-        printf("Hey, I am passenger %d, freed the trap\n", myid);
+        //printf("Hey, I am passenger %d, freed the trap\n", myid);
     }
 
     //semop
@@ -167,7 +171,7 @@ int main(int argc, char* argv[])
         trapCap = atoi(argv[4]);
     else
         trapCap = 1;
-    printf("trapCap - %d\n", trapCap);
+    //printf("trapCap - %d\n", trapCap);
 
 
     int semid = semget(IPC_PRIVATE, 8, 0777);
@@ -193,7 +197,7 @@ int main(int argc, char* argv[])
     {
         passengerPid = fork();
         if (passengerPid < 0)
-            printf("Something gone wrong when forking for a runner %d: %s", i, strerror(errno));
+            printf("Something gone wrong when forking for a passenger %d: %s", i, strerror(errno));
         
         if (passengerPid == 0)
         {
@@ -207,7 +211,7 @@ int main(int argc, char* argv[])
     {
         int status;
         wait(&status);
-        printf("\nmain proc waited %d\n", i);
+        //printf("main proc waited %d\n", i);
     }
 
     semctl(semid, 0, IPC_RMID);

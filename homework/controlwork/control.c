@@ -17,14 +17,14 @@
 #include <sys/msg.h>
 #include <sys/time.h>
 
-#define SCREW_MAN 1
-#define BOLT_MAN 2
-#define PLACE_NEW 3
+#define FIRST_NUT_MAN 1
+#define SECOND_NUT_MAN 2
+#define SCREW_MAN 3
 
 struct SubjectCondition
 {
+    int N;
     int S;
-    int B;
 };
 
 struct msgbuf
@@ -37,7 +37,13 @@ struct msgbuf
 void printmsg(int workerId, struct msgbuf toPrint)
 {
     printf("Called from worker %d", workerId);
-    printf(" msg: type - %ld needNew - %ld, condition of screws - %d, condition of bolt - %d\n", toPrint.mtype, toPrint.needNew, toPrint.subjCond.S, toPrint.subjCond.B);
+    printf(" msg: type - %ld needNew - %ld, condition of nuts - %d, condition of screw - %d\n", toPrint.mtype, toPrint.needNew, toPrint.subjCond.N, toPrint.subjCond.S);
+}
+
+int placeNut(int workerId)
+{
+    printf("Hey, i am a nut man %d, i am placing nut\n", workerId);
+    return 0;
 }
 
 int placeScrew()
@@ -46,19 +52,15 @@ int placeScrew()
     return 0;
 }
 
-int placeBolt()
-{
-    printf("Hey, i am a bolt man, i am placing bolt\n");
-    return 0;
-}
-
 int removeSubj(int workerId)
 {
     switch (workerId)
     {
-        case SCREW_MAN: printf("Hey, i am a screw man, i am removing subject\n");
+        case FIRST_NUT_MAN: printf("Hey, i am a nut man %d, i am removing subject\n", workerId);
                         break;
-        case BOLT_MAN: printf("Hey, i am a bolt man, i am removing subject\n");
+        case SECOND_NUT_MAN: printf("Hey, i am a nut man %d, i am removing subject\n", workerId);
+                        break;
+        case SCREW_MAN: printf("Hey, i am a screw man, i am removing subject\n");
                         break;
     }
 
@@ -69,9 +71,11 @@ int placeNew(int workerId)
 {
     switch (workerId)
     {
-        case SCREW_MAN: printf("Hey, i am a screw man, i am placing new subject\n");
+        case FIRST_NUT_MAN: printf("Hey, i am a nut man %d, i am placing new subject\n", workerId);
                         break;
-        case BOLT_MAN: printf("Hey, i am a bolt man, i am placing new subject\n");
+        case SECOND_NUT_MAN: printf("Hey, i am a nut man %d, i am placing new subject\n", workerId);
+                        break;
+        case SCREW_MAN: printf("Hey, i am a screw man, i am placing new subject\n");
                         break;
     }
 
@@ -80,16 +84,93 @@ int placeNew(int workerId)
 
 //-______--______--______--______--______--______--______--______--______--______--______--______--______--______--______--______-
 
-int screwMan(int num, int N, int E, int subjCond, int S, int B)
+int nutMan(int workerId, int amount, int E, int subjCond, int N, int S)
 {
-    printf("Hey, i am a screw man %d\n", num);
+    printf("Hey, i am a nut man %d\n", workerId);
     struct msgbuf condition = {1, 0, 0, 0};
     struct msgbuf needNew;
     int msgSize = sizeof(struct msgbuf) - sizeof(long);
 
     for (int subjNum = 1; ;)
     {
+        // if (workerId == 2)
+        //    sleep(2);
+        int toPlace = msgrcv(E, &needNew, msgSize, 0, IPC_NOWAIT);
+        //printf("toPlace - %d\n", toPlace);
+        if (toPlace >= 0)
+        {
+            placeNew(workerId);
 
+            needNew.needNew = 0;
+            condition = needNew;
+
+            msgsnd(subjCond, &condition, msgSize, 0);
+        }
+        printf("Nut man %d, trying to get info what we working on\n", workerId);
+        msgrcv(subjCond, &condition, msgSize, 0, 0);
+
+        subjNum = condition.mtype;
+        printf("Nut man %d, working on %d subj\n", workerId, subjNum);
+
+        if (condition.subjCond.N != 2)
+        {
+            placeNut(workerId);
+            condition.subjCond.N++;
+        }
+
+        if (condition.subjCond.N != 2)
+            msgsnd(subjCond, &condition, msgSize, 0);
+        else
+        {
+            if (condition.subjCond.S == 1)
+            {
+                removeSubj(workerId);
+                if (subjNum == amount)
+                {
+                    msgsnd(subjCond, &condition, msgSize, 0);
+                    printf("nut man %d; ended my work for today\n", workerId);
+                    return 0;
+                }
+                needNew.mtype = subjNum + 1;
+                needNew.needNew = 1;
+
+                msgsnd(E, &needNew, 0, 0);
+
+                long tmp = subjNum + 1;
+                msgsnd(N, &tmp, 0, 0);
+                msgsnd(S, &tmp, 0, 0);
+            }
+            else
+            {
+                printf("Nut man %d; ended my work on %d subject\n", workerId, subjNum);
+                msgsnd(subjCond, &condition, msgSize, 0);
+                if (subjNum == amount)
+                {
+                    printf("Nut man %d; ended my work for today\n", workerId);
+                    return 0;
+                }
+                long tmp;
+                msgrcv(N, &tmp, 0, 0, 0);
+            }
+        }
+
+    }
+
+    return 0;
+}
+
+//-______--______--______--______--______--______--______--______--______--______--______--______--______--______--______--______-
+
+int screwMan(int amount, int E, int subjCond, int N, int S)
+{
+    printf("Hey, i am a screw man\n");
+    struct msgbuf condition = {1, 0, 0, 0};
+    struct msgbuf needNew;
+    int msgSize = sizeof(struct msgbuf) - sizeof(long);
+    //printf("msgSize - %d\n", msgSize);
+
+    for (int subjNum = 1; ;)
+    {
         int toPlace = msgrcv(E, &needNew, msgSize, 0, IPC_NOWAIT);
         //printf("toPlace - %d\n", toPlace);
         if (toPlace >= 0)
@@ -104,92 +185,19 @@ int screwMan(int num, int N, int E, int subjCond, int S, int B)
         msgrcv(subjCond, &condition, msgSize, 0, 0);
 
         subjNum = condition.mtype;
-
-        printf("Screw man %d, working on %d subj\n", num, subjNum);
-
-        if (condition.subjCond.S != 2)
-        {
-            placeScrew();
-            condition.subjCond.S++;
-            msgsnd(subjCond, &condition, msgSize, 0);
-        }
-        else
-        {
-            if (condition.subjCond.B == 1)
-            {
-                removeSubj(SCREW_MAN);
-                if (subjNum == N)
-                {
-                    msgsnd(subjCond, &condition, msgSize, 0);
-                    printf("screw man %d; ended my work for today\n", num);
-                    return 0;
-                }
-                needNew.mtype = subjNum + 1;
-                needNew.needNew = 1;
-
-                msgsnd(E, &needNew, 0, 0);
-
-                long tmp = subjNum + 1;
-                msgsnd(B, &tmp, 0, 0);
-                msgsnd(S, &tmp, 0, 0);
-            }
-            else
-            {
-                printf("Screw man %d; ended my work on %d subject\n", num, subjNum);
-                msgsnd(subjCond, &condition, msgSize, 0);
-                if (subjNum == N)
-                {
-                    printf("screw man %d; ended my work for today\n", num);
-                    return 0;
-                }
-                long tmp;
-                msgrcv(S, &tmp, 0, 0, 0);
-            }
-        }
-
-    }
-
-    return 0;
-}
-
-//-______--______--______--______--______--______--______--______--______--______--______--______--______--______--______--______-
-
-int boltMan(int N, int E, int subjCond, int S, int B)
-{
-    printf("Hey, i am a bolt man\n");
-    struct msgbuf condition = {1, 0, 0, 0};
-    struct msgbuf needNew;
-    int msgSize = sizeof(struct msgbuf) - sizeof(long);
-    //printf("msgSize - %d\n", msgSize);
-
-    for (int subjNum = 1; ;)
-    {
-        int toPlace = msgrcv(E, &needNew, msgSize, 0, IPC_NOWAIT);
-        //printf("toPlace - %d\n", toPlace);
-        if (toPlace >= 0)
-        {
-            placeNew(BOLT_MAN);
-
-            needNew.needNew = 0;
-            condition = needNew;
-
-            msgsnd(subjCond, &condition, msgSize, 0);
-        }
-        msgrcv(subjCond, &condition, msgSize, 0, 0);
-
-        subjNum = condition.mtype;
-        printf("Bolt man, working on %d subj\n", subjNum);
+        printf("Screw man, working on %d subj\n", subjNum);
         //printmsg(BOLT_MAN, needNew);
 
-        placeBolt();
-        condition.subjCond.B++;
+        placeScrew();
+        condition.subjCond.S++;
 
-        if (condition.subjCond.S == 2)
+        if (condition.subjCond.N == 2)
         {
-            removeSubj(BOLT_MAN);
-            if (subjNum == N)
+            removeSubj(SCREW_MAN);
+            if (subjNum == amount)
             {
-                printf("bolt man; ended my work for today\n");
+                msgsnd(subjCond, &condition, msgSize, 0);
+                printf("screw man; ended my work for today\n");
                 return 0;
             }
             needNew.mtype = subjNum + 1;
@@ -198,20 +206,20 @@ int boltMan(int N, int E, int subjCond, int S, int B)
             msgsnd(E, &needNew, msgSize, 0);
 
             long tmp = subjNum + 1;
-            msgsnd(S, &tmp, 0, 0);
-            msgsnd(S, &tmp, 0, 0);
+            msgsnd(N, &tmp, 0, 0);
+            msgsnd(N, &tmp, 0, 0);
         }
         else
         {
-            printf("bolt man; ended my work on %d subject\n", subjNum);
+            printf("screw man; ended my work on %d subject\n", subjNum);
             msgsnd(subjCond, &condition, msgSize, 0);
-            if (subjNum == N)
+            if (subjNum == amount)
             {
-                printf("bolt man; ended my work for today\n");
+                printf("screw man; ended my work for today\n");
                 return 0;
             }
             long tmp;
-            msgrcv(B, &tmp, 0, 0, 0);
+            msgrcv(S, &tmp, 0, 0, 0);
         }
     }
 
@@ -220,14 +228,13 @@ int boltMan(int N, int E, int subjCond, int S, int B)
 
 int main(int argc, char* argv[])
 {
-    int subjCond = msgget(IPC_PRIVATE, 0777);
-    int E = msgget(IPC_PRIVATE, 0777);
-    int S = msgget(IPC_PRIVATE, 0777);
-    int B = msgget(IPC_PRIVATE, 0777);
-    //printf("E - %d, subjcond - %d\n", E, subjCond);
-    //printf("main sending a init message\n");
+    int subjCond = msgget(IPC_PRIVATE, 0777); // msg queue, where condition of subject is sent and received
+    int E = msgget(IPC_PRIVATE, 0777); // msg queue, for cases when new subject should be placed
+    int S = msgget(IPC_PRIVATE, 0777); // msg queue for screw man to sleep when his work on current subject is done
+    int B = msgget(IPC_PRIVATE, 0777); // msg queue for nut man to sleep when his work on current subject is done
+
+
     struct msgbuf init = {1, 1, 0, 0};
-    //printmsg(0, init);
     msgsnd(E, &init, sizeof(init) - sizeof(long), 0);
 
     int N;
@@ -236,9 +243,8 @@ int main(int argc, char* argv[])
     else
         N = 5;
 
-    int i;
     pid_t childPid;
-    for (i = 0; i < 3; i++)
+    for (int i = 0; i < 3; i++)
     {
         childPid = fork();
 
@@ -247,19 +253,19 @@ int main(int argc, char* argv[])
             if (i < 2)
             {
                 printf("Calling screw man\n");
-                screwMan(i, N, E, subjCond, S, B);
+                nutMan(i + 1, N, E, subjCond, S, B);
                 return 0;
             }
             else
             {
-                printf("Calling bolt man\n");
-                boltMan(N, E, subjCond, S, B);
+                printf("Calling screw man\n");
+                screwMan(N, E, subjCond, S, B);
                 return 0;
             }
         }
     }
 
-    for (i = 0; i < 3; i++)
+    for (int i = 0; i < 3; i++)
     {
         int status;
         wait(&status);

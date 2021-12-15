@@ -19,18 +19,19 @@
 
 enum Semaphores
 {
-    ACCESS_SEM = 0,
-    CURRENT_CHAR_SEM,
-    WAIT_FOR_NEXT,
-    SLEEP_AMOUNT,
-    WAKEN_UP
+    ACCESS_SEM = 0, // semaphore to ensure only one bogatyr can look at current character at the same time
+    CURRENT_CHAR_SEM, // semaphore, used as shared int to which value is index of current character which should be typed
+    WAIT_FOR_NEXT_CHAR, // semaphore used to sleep bogatyrs, whose char they ares singing is not the one that is current
+    SLEEPING_HERO_AMOUNT, // semaphore, used as shared int which value is amount of bogatyrs waiting for current char to be typed
+    WAKEN_UP // semaphore for bogatyr, who typed current char and is waking up all sleeping bogatyrs,
+             //  so he understands he actually woke some sleeping bogatyr
 };
 
 const char SetGreen[] = "\033[32m";
 const char SetRed[] = "\033[31m";
 const char SetDefault[] = "\033[0m";
 
-struct CharInfo
+struct CharInfo // structure, which will be used in shared memory, bogatyrs write taken characters there
 {
     int occupiedChars;
     char takenBuf[60];
@@ -54,13 +55,7 @@ void Z( int semId, int semNum )
     semop(semId, &operation, 1);
 }
 
-int noWaitZ( int semId, int semNum )
-{
-    struct sembuf operation = {semNum, 0, IPC_NOWAIT};
-    return semop(semId, &operation, 1);
-}
-
-int ifFirstToTake(struct CharInfo taken, char letter)
+int ifFirstToTake(struct CharInfo taken, char letter) // checks if current character is already taken by other bogatyr
 {
     int len = taken.occupiedChars;
     int flag = 1;
@@ -75,8 +70,6 @@ int ifFirstToTake(struct CharInfo taken, char letter)
 
     return flag;
 }
-
-
 
 int child(int myPid, const char* toSing)
 {
@@ -99,7 +92,6 @@ int child(int myPid, const char* toSing)
     }
 
     int shmId = shmget(mykey, sizeof(struct CharInfo), IPC_CREAT | IPC_EXCL | 0777);
-    
     if ((shmId == -1) && (errno == EEXIST))
     {
         shmId = shmget(mykey, sizeof(struct CharInfo), 0777);
@@ -110,7 +102,7 @@ int child(int myPid, const char* toSing)
     int current = 0;
     int toSleep = 0;
     char myLetter = 0;
-    int result;
+    int sleepingAmount;
     while (current <= (len - 1))
     {
         //printf("I am child %d, will try at a char\n", myPid);
@@ -134,10 +126,11 @@ int child(int myPid, const char* toSing)
             V(semId, CURRENT_CHAR_SEM, 1);
             current++;
 
-            while(noWaitZ(semId, SLEEP_AMOUNT) != 0)
+            sleepingAmount = semctl(semId, SLEEPING_HERO_AMOUNT, GETVAL);
+            for (int i = 0; i < sleepingAmount; i++)
             {
-                P(semId, SLEEP_AMOUNT, 1);
-                V(semId, WAIT_FOR_NEXT, 1);
+                P(semId, SLEEPING_HERO_AMOUNT, 1);
+                V(semId, WAIT_FOR_NEXT_CHAR, 1);
                 //printf("child %d: sended a message to wake one\n", myPid);
                 P(semId, WAKEN_UP, 1);
                 //printf("child %d: waked one\n", myPid);
@@ -149,10 +142,11 @@ int child(int myPid, const char* toSing)
             V(semId, CURRENT_CHAR_SEM, 1);
             current++;
 
-            while(noWaitZ(semId, SLEEP_AMOUNT) != 0)
+            sleepingAmount = semctl(semId, SLEEPING_HERO_AMOUNT, GETVAL);
+            for (int i = 0; i < sleepingAmount; i++)
             {
-                P(semId, SLEEP_AMOUNT, 1);
-                V(semId, WAIT_FOR_NEXT, 1);
+                P(semId, SLEEPING_HERO_AMOUNT, 1);
+                V(semId, WAIT_FOR_NEXT_CHAR, 1);
                 //printf("child %d: sended a message to wake one\n", myPid);
                 P(semId, WAKEN_UP, 1);
                 //printf("child %d: waked one\n", myPid);
@@ -167,9 +161,9 @@ int child(int myPid, const char* toSing)
         V(semId, ACCESS_SEM, 1);
         if (toSleep)
         {
-            V(semId, SLEEP_AMOUNT, 1);
+            V(semId, SLEEPING_HERO_AMOUNT, 1);
             //printf("child %d: going to wait for next char\n", myPid);
-            P(semId, WAIT_FOR_NEXT, 1);
+            P(semId, WAIT_FOR_NEXT_CHAR, 1);
             V(semId, WAKEN_UP, 1);
             //printf("child %d: waked up for next char\n", myPid);
             toSleep = 0;
@@ -182,15 +176,21 @@ int child(int myPid, const char* toSing)
     return 0;
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+    const char* toSing;
+    if (argc > 1)
+        toSing = argv[1];
+    else
+        toSing = "Hello world!";
+
     int childNum = 25;
     for (int i = 0; i < childNum; i++)
     {
         pid_t childPid = fork();
         if (childPid == 0)
         {
-            child(i, "O great Heavens!");
+            child(i, toSing);
             return 0;
         }
     }
