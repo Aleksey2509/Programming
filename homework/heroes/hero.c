@@ -154,14 +154,14 @@ int child(int myPid, const char* toSing)
         }
         else
         {
-            printf("I am bogatyr %02d; my letter - '%c', but current - %s'%c'%s\n", myPid, myLetter, SetRed, toSing[current], SetDefault);
+            //printf("I am bogatyr %02d; my letter - '%c', but current - %s'%c'%s\n", myPid, myLetter, SetRed, toSing[current], SetDefault);
+            V(semId, SLEEPING_HERO_AMOUNT, 1);
             toSleep = 1;
         }
 
         V(semId, ACCESS_SEM, 1);
         if (toSleep)
         {
-            V(semId, SLEEPING_HERO_AMOUNT, 1);
             //printf("child %d: going to wait for next char\n", myPid);
             P(semId, WAIT_FOR_NEXT_CHAR, 1);
             V(semId, WAKEN_UP, 1);

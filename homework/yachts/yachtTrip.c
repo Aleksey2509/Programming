@@ -19,39 +19,16 @@
 
 enum SEMAPHORES
 {
-    THE_TRAP = 0,
-    THE_YACHT,
-    THE_BANK,
-    TO_GET_ONTO,
-    TO_LEAVE,
-    TO_PARTICIPATE,
-    LAST_TRIP_WARNING,
-    TRIPPING
+    THE_TRAP = 0, // semaphore for controling amount of people on trap
+    THE_YACHT, // semaphore for controling amount of people on trap
+    THE_BANK, // semaphore, used as shared int contatining amount of people on bank (берег)
+    TO_GET_ONTO, // semaphore, for passengers who want to get on the yacht to sleep on, when yacht is in a trip
+    TO_LEAVE, // semaphore, for passengers who want to get off the yacht to sleep on, when yacht is in a trip
+    TO_PARTICIPATE, // semaphore, to get understanding whether there will be a new trip
+    LAST_TRIP_WARNING, // semaphore, used as shared int, becomes 1 when the yacht had it's last trip
+    TRIPPING 
 };
 
-//const struct sembuf operations [][2] = { getOnYacht, freeTrap, leaveYacht };
-
-/* Task:
-
-    There are NP passengers and 1 capitan;
-
-    There is a yacht and it can hold NB people
-
-    NT = 1 - ограничение перехода по трапу
-
-    Нужно организовать посадку высадку и покатание
-
-    Окончание покатаний - закат
-
-    При прибытии на берег: все выходят и обратно садятся кто хочет, а точнее кто успеет
-
-*/
-
-/*
-
-    given variables: NP, NB, NE; NE - param, which tells when this stops
-
-*/
 
 int Captain(int semid, int passengersCount, int yachtCap, int tripNum, int trapCap)
 {
