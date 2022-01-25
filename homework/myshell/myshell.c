@@ -54,38 +54,38 @@ int mypipe(int fd[2])
 
 char** parseIntoProgramms(char* cmdBuf, int* progNum)
 {
-    char** progPointer = (char**)calloc(PROGS_MAX, sizeof(char*));
+    char** progPtr = (char**)calloc(PROGS_MAX, sizeof(char*));
     int progsAllocated = PROGS_MAX;
-    char* ptrToVert;
+    char* progStr, *savePtr;
     int progCounter = 0;
-    progPointer[progCounter++] = cmdBuf;
+    const char* delim = "|";
+    progPtr[progCounter++] = cmdBuf;
 
-    while ((ptrToVert = strchr(cmdBuf, '|')) != 0)
+    for(progStr = strtok_r(cmdBuf, delim, &savePtr); (progStr != NULL); progStr = strtok_r(NULL, delim, &savePtr))
     {
-        progPointer[progCounter++] = ptrToVert + 1;
+        progPtr[progCounter++] = progStr;
         if (progCounter == (progsAllocated - 1))
         {
-            char** tmp = (char**)realloc(progPointer, 2 * progsAllocated * sizeof(char *));
+            char** tmp = (char**)realloc(progPtr, 2 * progsAllocated * sizeof(char *));
                 if (!tmp)
                 {
                     *progNum = progCounter;
                     return NULL;
                 }
                 progsAllocated *= 2;
-                progPointer = tmp;
+                progPtr = tmp;
         }
 
-        cmdBuf = ptrToVert + 1;
     }
 
     *progNum = progCounter;
 
-    return progPointer;
+    return progPtr;
 }
 
 //-----------------------------------------------------------------------------------------------------------------------
 
-char** parseIntoArguments(char* argBuf, int* argc, char* argEnd)
+char** parseIntoArguments(char* argBuf, int* argc)
 {
     //printf("argstart - %s, argend - %s\n", argBuf, argEnd);
     char** argv = (char**)calloc(ARGS_MAX, sizeof(char*));
@@ -94,7 +94,7 @@ char** parseIntoArguments(char* argBuf, int* argc, char* argEnd)
     char* wordPtr, *savePtr;
     char delim[] = " |";
 
-    for(wordPtr = strtok_r(argBuf, delim, &savePtr); (wordPtr != NULL) && ( (argEnd == NULL) || (wordPtr < argEnd) ); wordPtr = strtok_r(NULL, delim, &savePtr))
+    for(wordPtr = strtok_r(argBuf, delim, &savePtr); (wordPtr != NULL); wordPtr = strtok_r(NULL, delim, &savePtr))
     {
         //printf("got a word - %s.\n", wordPtr);
         argv[nWords++] = wordPtr;
@@ -119,11 +119,11 @@ char** parseIntoArguments(char* argBuf, int* argc, char* argEnd)
 
 //-----------------------------------------------------------------------------------------------------------------------
 
-int childProcess (int childNum, char* cmdBuf, char** argPointers, int progNum, int fd[2])
+int childProcess (int childNum, char* cmdBuf, int progNum, int fd[2])
 {
     //printf("childNum = %d, progNum = %d\n", childNum, progNum);
     int childArgc = 0;
-    char** childArgv = parseIntoArguments(cmdBuf, &childArgc, argPointers[childNum + 1]);
+    char** childArgv = parseIntoArguments(cmdBuf, &childArgc);
 
     // for (int i = 0; i < childArgc; i++)
     //     printf("arg %d - %s\n", i + 1, childArgv[i]);
@@ -132,7 +132,6 @@ int childProcess (int childNum, char* cmdBuf, char** argPointers, int progNum, i
     {
         dup2(fd[FD_READ], FD_READ);
         close (fd[FD_READ]);
-
     }
 
     if (fd[FD_WRITE] != FD_WRITE)
@@ -143,7 +142,7 @@ int childProcess (int childNum, char* cmdBuf, char** argPointers, int progNum, i
 
     execvp(childArgv[0], childArgv);
 
-    printf("There is a bit of problem with executing programm: %s: %s\n",childArgv[0], strerror(errno));
+    printf("There is a bit of problem with executing programm: %s: %s\n", childArgv[0], strerror(errno));
 
     free(childArgv);
     exit(EXECUTION_FAILURE);
@@ -168,7 +167,6 @@ int myshell ()
 
         int progNum = 0;
         char** argPointers = parseIntoProgramms(cmdBuf, &progNum);
-
 
         if ((argPointers == NULL) && (progNum > 1))
         {
@@ -201,7 +199,7 @@ int myshell ()
                     fd[FD_READ] = readFd;
                 }
 
-                childProcess(childNum, argPointers[childNum], argPointers, progNum, fd);
+                childProcess(childNum, argPointers[childNum], progNum, fd);
             }
             else
             {
