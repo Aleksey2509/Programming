@@ -28,6 +28,8 @@ int Vector_insertAfter(Vector* vector, int position, int elem);
 int Vector_insertBefore(Vector* vector, int position, int elem);
 int Vector_print(Vector* vector);
 
+void Vector_sort(Vector* vector, int (*comparator)(const void *, const void *));
+
 enum Errors
 {
     INVALID_ARG = -1000,

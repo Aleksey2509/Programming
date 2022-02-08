@@ -1,13 +1,6 @@
 #include "vector.h"
 #include "vectorPrivate.h"
 
-struct Vector
-{
-    size_t capacity;
-    size_t size;
-    int* elemArray;
-};
-
 Vector* Vector_create()
 {
     Vector* vector = malloc(sizeof(Vector));
@@ -182,10 +175,10 @@ int Vector_print(Vector* vector)
     if (vector == NULL)
         return INVALID_ARG;
 
-    printf("size = %zu\n", vector->size);
+    printf("\nsize = %zu\n", vector->size);
     for (int i = 0; i < vector->size; i++)
     {
-        printf("%d ", vector->elemArray[i]);
+        printf("elemArr[%d] = %d\n", i, vector->elemArray[i]);
     }
 
     return 0;

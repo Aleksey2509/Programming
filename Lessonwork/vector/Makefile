@@ -1,21 +1,24 @@
 CC = gcc
-CFLAGS = -c -o
-SRC = test.c vector.c
+CFLAGS = -Wall
+SRC = test.c vector.c vectorSort.c
+OBJ = $(SRC:.c=.o)
+EXEC = vector
 
-all: depend runtest clear
+.PHONY: all clean
+
+all: depend $(EXEC) clean
 
 depend:
 	gcc $(SRC) -MM > .depend
 
-compile_test: vector.o test.o
-	$(CC) $^ -o test
+$(EXEC): $(OBJ)
+	$(CC) $(OBJ) -o test
 
-runtest: vector.o compile_test
+runtest:
 	./test
 
-clear:
+clean:
 	rm *.o
-	rm test
 	rm .depend
 
 -include .depend
