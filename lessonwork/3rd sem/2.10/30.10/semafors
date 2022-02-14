@@ -1,0 +1,145 @@
+ семафор - "защищает"
+ процесс - freezes
+
+  semophore s;    // p/v semaphore 0/1
+
+    counted c = 42; // counted semafore
+
+    c += S; // v(c)
+    c -= 1; // you can add or subtract from counted semafore - p(c)
+
+    //p1, p2 - freezed and waiting
+
+    enter(s) // p(s) is a barrier: 1 -> 0
+
+    // begin crit
+
+    a = 0;
+    i++;
+
+    //end crit
+
+    leave(s); // v(s) 0 -> 1
+
+
+    c -= 5 // 42 -> 37
+    // begin crit
+
+    a = 0;
+    i++;
+
+    //end crit
+
+    c += 5; // current keys += 5
+
+    // we get an array of semafores, 
+    id = semget(key, n, 0777 | IPC_CREAT | IPC_EXCL)
+
+    // there is an array of operations: there are 3 values
+    // struct sembuf:
+    // {
+    //    sem_num
+    //    sem_op
+    //    sem_flg
+    // }
+    // struct sembuf op[6] = { { num of sem in array, +5, SEM_UNDO }, { num of sem in array, -1, IPC_NOWAIT }, { num of sem in array, 0 }, {...}, {...}, {...} }
+
+    // All operations are blocked if one cannot be done, even if those operations are towards different semaphores
+    semop(id, operations, countOperations)
+
+
+    semctl (id, IPC_RMID, 0); // remove all array
+
+
+
+    lift:
+
+    button is clikced by one process
+
+    enter can be by two sems
+
+    can hold 10
+
+
+
+    int door = 2;
+    int lift = 10;
+    int call = 1;
+
+    sem c = 1;
+
+
+
+    // on pseudo code: <- wrong one: only one proc can enter
+    p(c);
+
+    door--;
+    lift--;
+    call--;
+
+    // use lift
+
+    call++;
+    lift++
+    door++
+
+    v(c);
+
+    // leave
+
+    // on pseudo code:
+    p(c);
+    if ( door > 0 && lift > 0 && call > 0 )
+    {
+    call--;
+    door--;
+    lift--;
+    }
+    else
+    {
+        v(c);
+        // < == race condition
+        p(wait)
+    }
+
+    // use lift
+
+    p(c);
+
+    lift++
+    door++
+    call++;
+    v(wait);
+
+    v(c);
+
+    // leave
+
+
+
+    with semaphores:
+
+    ops[3] = { {DOOR, - 1}, { LIFT, -1 }, {CALL - 1} };
+    semop {id, ops, 3};
+
+    // enter to lift begin
+    transaction
+    {
+        call--;
+        lift--;
+        door--;
+    }
+
+    transaction:
+    {
+        call++;
+        door++;
+    }
+
+    // use lift
+
+    transaction:
+    {
+        lift++;
+    }
+
