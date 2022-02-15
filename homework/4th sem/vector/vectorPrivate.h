@@ -8,6 +8,6 @@ struct Vector
     elem_t* elemArray;
 };
 
-int Vector_resize(Vector* vector);
+err_t Vector_resize(Vector* vector);
 
 #endif

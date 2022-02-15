@@ -15,6 +15,9 @@ void printElem(elem_t* data)
     printf("%d\n", *(int*)data);
 }
 
+void Vector_sort(Vector* vector, int (*comparator)(const void *, const void *));
+err_t Vector_swapElem(Vector* vector, size_t i, size_t j);
+
 int main()
 {
     size_t cap = 20;
@@ -24,12 +27,18 @@ int main()
         return err;
 
     Vector_pushBack(testSubject, 5);
-    Vector_pushBack(testSubject, 2);
+    Vector_pushBack(testSubject, 25);
     Vector_pushBack(testSubject, 4);
+    Vector_pushBack(testSubject, 3);
+    Vector_pushBack(testSubject, 6);
+    Vector_pushBack(testSubject, 100);
+    Vector_pushBack(testSubject, 200);
 
     Vector_print(testSubject);
 
-    Vector_sort(testSubject, &comparator);
+    //Vector_swapElem(testSubject, 1, 4);
+
+    Vector_sort(testSubject, comparator);
 
     Vector_print(testSubject);
     Vector_destroy(testSubject);

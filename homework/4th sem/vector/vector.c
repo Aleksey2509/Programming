@@ -14,7 +14,7 @@ Vector* Vector_create()
     return vector;
 }
 
-int Vector_init(Vector* vector, size_t capacity, const int* data)
+err_t Vector_init(Vector* vector, size_t capacity, elem_t* data)
 {
     if ((vector == NULL) || (capacity == 0))
         return INVALID_ARG;
@@ -35,7 +35,7 @@ int Vector_init(Vector* vector, size_t capacity, const int* data)
     return 0;
 }
 
-int Vector_destroy(Vector* vector)
+err_t Vector_destroy(Vector* vector)
 {
     if (vector == NULL)
         return INVALID_ARG;
@@ -49,7 +49,84 @@ int Vector_destroy(Vector* vector)
     return 0;
 }
 
-int Vector_pushBack(Vector* vector, const int data)
+//================================================================================================
+//  iterators: replaced what would be done with operators using functions
+//================================================================================================
+
+iter_t Vector_createIter(Vector* vector, size_t index)
+{
+    if ((vector == NULL) || (index < 0) || (index > vector->size - 1))
+        return INVALID_ARG;
+
+    return index;
+}
+
+err_t Vector_setIter(Vector* vector, iter_t* iterator, size_t index)
+{
+    if ((vector == NULL) || (index < 0) || (index > vector->size - 1))
+        return INVALID_ARG;
+
+    *iterator = index;
+
+    return 0;
+}
+
+err_t Vector_incIter(iter_t* iterator)
+{
+    if (iterator == NULL)
+        return INVALID_ARG;
+
+    (*iterator)++;
+
+    return 0;
+}
+
+err_t Vector_decIter(iter_t* iterator)
+{
+    if ((iterator == NULL) || (*iterator == 0))
+        return INVALID_ARG;
+
+    (*iterator)--;
+
+    return 0;
+}
+
+elem_t Vector_getElemIter(Vector* vector, const iter_t* iterator)
+{
+    int index = *iterator;
+    return vector->elemArray[index];
+}
+
+err_t Vector_setElemIter(Vector* vector, const iter_t* iterator, elem_t data)
+{
+    if ((vector == NULL) || (iterator == NULL))
+        return INVALID_ARG;
+
+    vector->elemArray[*iterator] = data;
+    return 0;
+}
+
+int Vector_cmpIter(iter_t* firstIter, iter_t* secondIter)
+{
+    return (*firstIter) == (*secondIter);
+}
+
+//================================================================================================
+
+size_t Vector_getSize(Vector* vector)
+{
+    return vector->size;
+}
+
+elem_t Vector_getElem(Vector* vector, int index)
+{
+    if ((vector == NULL) || (index < 0) || (index > (vector->size - 1)))
+        return INVALID_ARG;
+
+    return vector->elemArray[index];
+}
+
+err_t Vector_pushBack(Vector* vector, elem_t data)
 {
     if (vector == NULL)
         return INVALID_ARG;
@@ -67,7 +144,7 @@ int Vector_pushBack(Vector* vector, const int data)
     return 0;
 }
 
-int Vector_popBack(Vector* vector)
+err_t Vector_popBack(Vector* vector)
 {
     if (vector == NULL)
         return INVALID_ARG;
@@ -76,7 +153,7 @@ int Vector_popBack(Vector* vector)
     return (vector->elemArray[vector->size]);
 }
 
-int Vector_pushFront(Vector* vector, const int data)
+err_t Vector_pushFront(Vector* vector, elem_t data)
 {
     if (vector == NULL)
         return INVALID_ARG;
@@ -99,7 +176,7 @@ int Vector_pushFront(Vector* vector, const int data)
     return 0;
 }
 
-int Vector_popFront(Vector* vector)
+err_t Vector_popFront(Vector* vector)
 {
     if (vector == NULL)
         return INVALID_ARG;
@@ -113,24 +190,30 @@ int Vector_popFront(Vector* vector)
     return data;
 }
 
-int Vector_getElem(Vector* vector, int index)
+err_t Vector_insertAfter(Vector* vector, size_t index, elem_t elem)
 {
     if ((vector == NULL) || (index < 0) || (index > (vector->size - 1)))
         return INVALID_ARG;
-        
-    int data = vector->elemArray[index];
 
-    for (int i = index; i < (vector->size - 1); i++)
+    if (vector->size == vector->capacity - 1)
     {
-        vector->elemArray[i] = vector->elemArray[i + 1];
+        int err = Vector_resize(vector);
+        if (err)
+            return err;
     }
 
-    return data;
+    for (int i = vector->size - 1; i > index + 1; i--)
+    {
+        vector->elemArray[i] = vector->elemArray[i - 1];
+    }
+    vector->elemArray[index + 1] = elem;
+
+    return 0;
 }
 
-int Vector_insertAfter(Vector* vector, int position, int elem)
+err_t Vector_insertBefore(Vector* vector, size_t index, elem_t elem)
 {
-    if ((vector == NULL) || (position < 0) || (position > (vector->size - 1)))
+    if ((vector == NULL) || (index < 0) || (index > (vector->capacity - 1)))
         return INVALID_ARG;
 
     if (vector->size == vector->capacity - 1)
@@ -140,37 +223,16 @@ int Vector_insertAfter(Vector* vector, int position, int elem)
             return err;
     }
 
-    for (int i = vector->size - 1; i > position + 1; i--)
+    for (int i = vector->size - 1; i > index; i--)
     {
         vector->elemArray[i] = vector->elemArray[i - 1];
     }
-    vector->elemArray[position + 1] = elem;
+    vector->elemArray[index] = elem;
 
     return 0;
 }
 
-int Vector_insertBefore(Vector* vector, int position, int elem)
-{
-    if ((vector == NULL) || (position < 0) || (position > (vector->capacity - 1)))
-        return INVALID_ARG;
-
-    if (vector->size == vector->capacity - 1)
-    {
-        int err = Vector_resize(vector);
-        if (err)
-            return err;
-    }
-
-    for (int i = vector->size - 1; i > position; i--)
-    {
-        vector->elemArray[i] = vector->elemArray[i - 1];
-    }
-    vector->elemArray[position] = elem;
-
-    return 0;
-}
-
-int Vector_print(Vector* vector)
+err_t Vector_print(Vector* vector)
 {
     if (vector == NULL)
         return INVALID_ARG;
@@ -178,13 +240,13 @@ int Vector_print(Vector* vector)
     printf("\nsize = %zu\n", vector->size);
     for (int i = 0; i < vector->size; i++)
     {
-        printElem(vector->elemArray[i]);
+        printElem(vector->elemArray + i);
     }
 
     return 0;
 }
 
-int Vector_resize(Vector* vector)
+err_t Vector_resize(Vector* vector)
 {
     if (vector == NULL)
         return INVALID_ARG;
