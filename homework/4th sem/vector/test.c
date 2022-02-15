@@ -15,31 +15,32 @@ void printElem(elem_t* data)
     printf("%d\n", *(int*)data);
 }
 
-void Vector_sort(Vector* vector, int (*comparator)(const void *, const void *));
-err_t Vector_swapElem(Vector* vector, size_t i, size_t j);
+void Vector_sort(VectorContainer* vectorCont, int (*comparator)(const void *, const void *));
+err_t Vector_swapElem(VectorContainer* vectorCont, size_t i, size_t j);
 
 int main()
 {
     size_t cap = 20;
-    Vector* testSubject = Vector_create();
-    int err = Vector_init(testSubject, cap, NULL);
+    VectorContainer* testSubject = Vector_create();
+    int err = testSubject->m->init(testSubject, cap, NULL);
     if (err)
         return err;
 
-    Vector_pushBack(testSubject, 5);
-    Vector_pushBack(testSubject, 25);
-    Vector_pushBack(testSubject, 4);
-    Vector_pushBack(testSubject, 3);
-    Vector_pushBack(testSubject, 6);
-    Vector_pushBack(testSubject, 100);
-    Vector_pushBack(testSubject, 200);
+    testSubject->m->pushBack(testSubject, 5);
+    testSubject->m->print(testSubject);
+    testSubject->m->pushBack(testSubject, 25);
+    testSubject->m->pushBack(testSubject, 4);
+    testSubject->m->pushBack(testSubject, 300);
+    testSubject->m->pushBack(testSubject, 6);
+    testSubject->m->pushBack(testSubject, 3);
+    testSubject->m->pushBack(testSubject, 200);
 
-    Vector_print(testSubject);
+    testSubject->m->print(testSubject);
 
     //Vector_swapElem(testSubject, 1, 4);
 
     Vector_sort(testSubject, comparator);
 
-    Vector_print(testSubject);
-    Vector_destroy(testSubject);
+    testSubject->m->print(testSubject);
+    testSubject->m->destroy(testSubject);
 }
