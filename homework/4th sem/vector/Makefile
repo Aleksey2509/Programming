@@ -1,10 +1,11 @@
 CC = gcc
-CFLAGS = -Wall
+CFLAGS = -Wall -g
 SRC = test.c vector.c vectorSort.c
 OBJ = $(SRC:.c=.o)
 EXEC = vector
+RM = rm -rf
 
-all: depend $(EXEC) clean
+all: $(EXEC) clean
 
 depend:
 	gcc $(SRC) -MM > .depend
@@ -16,7 +17,6 @@ runtest:
 	./test
 
 clean:
-	rm *.o
-	rm .depend
+	$(RM) *.o
 
 -include .depend

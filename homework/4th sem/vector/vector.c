@@ -65,6 +65,16 @@ err_t Vector_destroy(void* vectorCont)
 //  iterators: replaced what would be done with operators using functions
 //================================================================================================
 
+iter_t Vector_begin(void* vectorCont)
+{
+    return 0;
+}
+
+iter_t Vector_end(void* vectorCont)
+{
+    return ((VectorContainer* )vectorCont)->vector->size - 1;
+}
+
 iter_t Vector_createIter(void* vectorCont, size_t index)
 {
 
@@ -123,7 +133,7 @@ err_t Vector_setElemIter(void* vectorCont, const iter_t* iterator, elem_t data)
 
 int Vector_cmpIter(iter_t* firstIter, iter_t* secondIter)
 {
-    return (*firstIter) == (*secondIter);
+    return ((*firstIter) > (*secondIter)) - ((*firstIter) < (*secondIter));
 }
 
 //================================================================================================

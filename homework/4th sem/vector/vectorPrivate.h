@@ -14,6 +14,8 @@ struct VectorData
 err_t Vector_init(void* vector, size_t capacity, const elem_t* data);
 err_t Vector_destroy(void* vector);
 
+iter_t Vector_begin(void* vector);
+iter_t Vector_end(void* vector);
 iter_t Vector_createIter(void* vector, size_t index);                         // analog to begin() method, but starting index is taken as param
 err_t Vector_setIter(void* vector, iter_t* iterator, size_t index);           // operator =  for iterator
 err_t Vector_incIter(iter_t* iterator);                                         // operator ++ for iterator
@@ -22,8 +24,7 @@ elem_t Vector_getElemIter(void* vector, const iter_t* iterator);              //
 err_t Vector_setElemIter(void* vector, const iter_t* iterator, elem_t data);  // combination of operators: *(iter*) =  
 int Vector_cmpIter(iter_t* firstIter, iter_t* secondIter);                      // returns -1 if element to which firstIter points has 
                                                                                 // lesser logical index, 1 if bigger and 0 if they point to
-                                                                                // same element
-
+                                                                                // same elemnaent
 size_t Vector_getSize(void* vector);
 elem_t Vector_getElem(void* vector, int index);
 
@@ -43,12 +44,14 @@ const ContainerMethods VectorMethods =
 {
     .init = Vector_init,
     .destroy = Vector_destroy,
+    .begin = Vector_begin,
+    .end = Vector_end,
     .createIter = Vector_createIter,            // analog to begin() method, but starting index is taken as param
     .setIter = Vector_setIter,                  // operator =  for iterator
     .incIter = Vector_incIter,                  // operator ++ for iterator
     .decIter = Vector_decIter,                  // operator -- for iterator
     .getElemIter = Vector_getElemIter,          // operator *  for iterator
-    .setElemIter = Vector_setElemIter,           // combination of operators: *(iter*) =  
+    .setElemIter = Vector_setElemIter,          // combination of operators: *(iter*) =  
     .cmpIter = Vector_cmpIter,
     .getElem = Vector_getElem,
     .getSize = Vector_getSize,

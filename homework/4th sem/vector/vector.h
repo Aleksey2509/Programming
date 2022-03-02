@@ -16,8 +16,6 @@ typedef struct VectorContainer
 VectorContainer* Vector_create();
 extern void printElem(elem_t* data);
 
-
-
 enum Errors
 {
     INVALID_ARG = -1000,
