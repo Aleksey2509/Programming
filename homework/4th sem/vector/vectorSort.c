@@ -1,13 +1,13 @@
 #include "vector.h"
 
-void Vector_QSort (VectorContainer* vectorCont, iter_t startIter, iter_t endIter, int (*comparator)(const void *, const void *));
+void Vector_QSort (Container* vectorCont, iter_t startIter, iter_t endIter, int (*comparator)(const void *, const void *));
 
-void Vector_sort(VectorContainer* vectorCont, int (*comparator)(const void *, const void *))
+void Vector_sort(Container* vectorCont, int (*comparator)(const void *, const void *))
 {
     Vector_QSort(vectorCont, vectorCont->m->begin(vectorCont), vectorCont->m->end(vectorCont), comparator);
 }
 
-err_t Vector_swapElem(VectorContainer* vectorCont, iter_t* firstIter, iter_t* secondIter)
+err_t Vector_swapElem(Container* vectorCont, iter_t* firstIter, iter_t* secondIter)
 {
     if (!vectorCont->m->cmpIter(firstIter, secondIter))
     {
@@ -22,7 +22,7 @@ err_t Vector_swapElem(VectorContainer* vectorCont, iter_t* firstIter, iter_t* se
     return 0;
 }
 
-void Vector_QSort (VectorContainer* vectorCont, iter_t startIter, iter_t endIter, int (*comparator)(const void *, const void *))
+void Vector_QSort (Container* vectorCont, iter_t startIter, iter_t endIter, int (*comparator)(const void *, const void *))
 {
     vectorCont->m->incIter(&startIter);
     if (vectorCont->m->cmpIter(&startIter, &endIter) >= 0)
@@ -32,7 +32,7 @@ void Vector_QSort (VectorContainer* vectorCont, iter_t startIter, iter_t endIter
 
     iter_t i = startIter;
     iter_t j = endIter;
-    iter_t pivotPos = (i + j) / 2;
+    iter_t pivotPos = i;
 
     elem_t pivotElem = vectorCont->m->getElemIter(vectorCont, &pivotPos);
 

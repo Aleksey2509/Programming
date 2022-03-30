@@ -7,13 +7,13 @@
 #include "../container/container.h"
 
 typedef struct VectorData VectorData;
-typedef struct VectorContainer
+typedef struct Container
 {
     const ContainerMethods* m;
     VectorData* vector;
-}VectorContainer;
+}Container;
 
-VectorContainer* Vector_create();
+Container* Vector_create();
 extern void printElem(elem_t* data);
 
 enum Errors

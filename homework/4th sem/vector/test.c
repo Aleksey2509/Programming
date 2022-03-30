@@ -15,13 +15,13 @@ void printElem(elem_t* data)
     printf("%d\n", *(int*)data);
 }
 
-void Vector_sort(VectorContainer* vectorCont, int (*comparator)(const void *, const void *));
-err_t Vector_swapElem(VectorContainer* vectorCont, size_t i, size_t j);
+void Vector_sort(Container* vectorCont, int (*comparator)(const void *, const void *));
+err_t Vector_swapElem(Container* vectorCont, size_t i, size_t j);
 
 int main()
 {
     size_t cap = 20;
-    VectorContainer* testSubject = Vector_create();
+    Container* testSubject = Vector_create();
     int err = testSubject->m->init(testSubject, cap, NULL);
     if (err)
         return err;

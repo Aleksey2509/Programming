@@ -1,9 +1,9 @@
 #include "vector.h"
 #include "vectorPrivate.h"
 
-VectorContainer* Vector_create()
+Container* Vector_create()
 {
-    VectorContainer* vectorContainer = malloc(sizeof(VectorContainer));
+    Container* vectorContainer = malloc(sizeof(Container));
     if (vectorContainer == NULL)
         return NULL;
 
@@ -26,8 +26,8 @@ err_t Vector_init(void* vectorCont, size_t capacity, const elem_t* data)
 {
     if ((vectorCont == NULL) || (capacity == 0))
         return INVALID_ARG;
-    ((VectorContainer *)vectorCont)->m = &VectorMethods;
-    VectorData* vector = ((VectorContainer *)vectorCont)->vector;
+    ((Container *)vectorCont)->m = &VectorMethods;
+    VectorData* vector = ((Container *)vectorCont)->vector;
 
     vector->elemArray = calloc(capacity, sizeof(int));
     if (vector->elemArray == NULL)
@@ -50,7 +50,7 @@ err_t Vector_destroy(void* vectorCont)
     if (vectorCont == NULL)
         return INVALID_ARG;
 
-    VectorData* vector = ((VectorContainer *)vectorCont)->vector;
+    VectorData* vector = ((Container *)vectorCont)->vector;
 
     vector->capacity = 0;
     vector->size = 0;
@@ -72,13 +72,13 @@ iter_t Vector_begin(void* vectorCont)
 
 iter_t Vector_end(void* vectorCont)
 {
-    return ((VectorContainer* )vectorCont)->vector->size - 1;
+    return ((Container* )vectorCont)->vector->size - 1;
 }
 
 iter_t Vector_createIter(void* vectorCont, size_t index)
 {
 
-    if ((vectorCont == NULL) || (index < 0) || (index > ((VectorContainer* )vectorCont)->vector->size - 1))
+    if ((vectorCont == NULL) || (index < 0) || (index > ((Container* )vectorCont)->vector->size - 1))
         return INVALID_ARG;
 
     return index;
@@ -86,9 +86,9 @@ iter_t Vector_createIter(void* vectorCont, size_t index)
 
 err_t Vector_setIter(void* vectorCont, iter_t* iterator, size_t index)
 {
-    vectorCont = (VectorContainer *)vectorCont;
+    vectorCont = (Container *)vectorCont;
 
-    if ((vectorCont == NULL) || (index < 0) || (index > ((VectorContainer* )vectorCont)->vector->size - 1))
+    if ((vectorCont == NULL) || (index < 0) || (index > ((Container* )vectorCont)->vector->size - 1))
         return INVALID_ARG;
 
     *iterator = index;
@@ -119,7 +119,7 @@ err_t Vector_decIter(iter_t* iterator)
 elem_t Vector_getElemIter(void* vectorCont, const iter_t* iterator)
 {
     int index = *iterator;
-    return ((VectorContainer* )vectorCont)->vector->elemArray[index];
+    return ((Container* )vectorCont)->vector->elemArray[index];
 }
 
 err_t Vector_setElemIter(void* vectorCont, const iter_t* iterator, elem_t data)
@@ -127,7 +127,7 @@ err_t Vector_setElemIter(void* vectorCont, const iter_t* iterator, elem_t data)
     if ((vectorCont == NULL) || (iterator == NULL))
         return INVALID_ARG;
 
-    ((VectorContainer* )vectorCont)->vector->elemArray[*iterator] = data;
+    ((Container* )vectorCont)->vector->elemArray[*iterator] = data;
     return 0;
 }
 
@@ -140,15 +140,15 @@ int Vector_cmpIter(iter_t* firstIter, iter_t* secondIter)
 
 size_t Vector_getSize(void* vectorCont)
 {
-    return ((VectorContainer* )vectorCont)->vector->size;
+    return ((Container* )vectorCont)->vector->size;
 }
 
 elem_t Vector_getElem(void* vectorCont, int index)
 {
-    if ((vectorCont == NULL) || (index < 0) || (index > (((VectorContainer* )vectorCont)->vector->size - 1)))
+    if ((vectorCont == NULL) || (index < 0) || (index > (((Container* )vectorCont)->vector->size - 1)))
         return INVALID_ARG;
 
-    return ((VectorContainer* )vectorCont)->vector->elemArray[index];
+    return ((Container* )vectorCont)->vector->elemArray[index];
 }
 
 err_t Vector_pushBack(void* vectorCont, elem_t data)
@@ -156,7 +156,7 @@ err_t Vector_pushBack(void* vectorCont, elem_t data)
     if (vectorCont == NULL)
         return INVALID_ARG;
 
-    VectorData* vector = ((VectorContainer *)vectorCont)->vector;
+    VectorData* vector = ((Container *)vectorCont)->vector;
 
     if (vector->size == vector->capacity - 1)
     {
@@ -176,7 +176,7 @@ err_t Vector_popBack(void* vectorCont)
     if (vectorCont == NULL)
         return INVALID_ARG;
 
-    VectorData* vector = ((VectorContainer *)vectorCont)->vector;
+    VectorData* vector = ((Container *)vectorCont)->vector;
 
     vector->size--;
     return (vector->elemArray[vector->size]);
@@ -187,7 +187,7 @@ err_t Vector_pushFront(void* vectorCont, elem_t data)
     if (vectorCont == NULL)
         return INVALID_ARG;
 
-    VectorData* vector = ((VectorContainer *)vectorCont)->vector;
+    VectorData* vector = ((Container *)vectorCont)->vector;
 
     if (vector->size == vector->capacity - 1)
     {
@@ -212,7 +212,7 @@ err_t Vector_popFront(void* vectorCont)
     if (vectorCont == NULL)
         return INVALID_ARG;
 
-    VectorData* vector = ((VectorContainer *)vectorCont)->vector;
+    VectorData* vector = ((Container *)vectorCont)->vector;
 
     int data = vector->elemArray[0];
     for (int i = 0; i < vector->size - 1; i++)
@@ -225,10 +225,10 @@ err_t Vector_popFront(void* vectorCont)
 
 err_t Vector_insertAfter(void* vectorCont, size_t index, elem_t elem)
 {
-    if ((vectorCont == NULL) || (index < 0) || (index > ((VectorContainer *)vectorCont)->vector->size - 1))
+    if ((vectorCont == NULL) || (index < 0) || (index > ((Container *)vectorCont)->vector->size - 1))
         return INVALID_ARG;
 
-    VectorData* vector = ((VectorContainer *)vectorCont)->vector;
+    VectorData* vector = ((Container *)vectorCont)->vector;
 
     if (vector->size == vector->capacity - 1)
     {
@@ -248,12 +248,12 @@ err_t Vector_insertAfter(void* vectorCont, size_t index, elem_t elem)
 
 err_t Vector_insertBefore(void* vectorCont, size_t index, elem_t elem)
 {
-    vectorCont = (VectorContainer *)vectorCont;
+    vectorCont = (Container *)vectorCont;
 
-    if ((vectorCont == NULL) || (index < 0) || (index > (((VectorContainer *)vectorCont)->vector->capacity - 1)))
+    if ((vectorCont == NULL) || (index < 0) || (index > (((Container *)vectorCont)->vector->capacity - 1)))
         return INVALID_ARG;
 
-    VectorData* vector = ((VectorContainer *)vectorCont)->vector;
+    VectorData* vector = ((Container *)vectorCont)->vector;
 
     if (vector->size == vector->capacity - 1)
     {
@@ -276,7 +276,7 @@ err_t Vector_print(void* vectorCont)
     if (vectorCont == NULL)
         return INVALID_ARG;
 
-    VectorData* vector = ((VectorContainer *)vectorCont)->vector;
+    VectorData* vector = ((Container *)vectorCont)->vector;
 
     printf("\nsize = %zu\n", vector->size);
     for (size_t i = 0; i < vector->size; i++)
@@ -293,7 +293,7 @@ err_t Vector_resize(void* vectorCont)
     if (vectorCont == NULL)
         return INVALID_ARG;
 
-    VectorData* vector = ((VectorContainer *)vectorCont)->vector;
+    VectorData* vector = ((Container *)vectorCont)->vector;
 
     void* tmp = realloc(vector->elemArray, vector->capacity * 2);
     if (tmp == NULL)
