@@ -1,6 +1,8 @@
 CXX = g++
 CXXFLAGS = -Wall -g -std=c++2a
-CXXFLAGS += -Iheaders
+CXXFLAGS += -Iheaders -I/usr/local/Cellar/sfml/2.5.1_1/include
+
+LDFLAGS += -lsfml-graphics -lsfml-window -lsfml-system 
 
 HEADL = headers
 
@@ -24,7 +26,11 @@ depend:
 	$(CXX) $(CXXFLAGS) $(SRC) -MM > .depend
 
 $(PROG): $(OBJ)
-	$(CXX) $(CXXFLAGS) $(OBJ) -o $(PROG)
+	$(CXX) $(CXXFLAGS) $(OBJ) -o $(PROG) $(LDFLAGS)
+
+sfmlWindow: sfmlTest.cpp
+	$(CXX) -c sfmlTest.cpp $(CXXFLAGS) -o sfmlTest.o
+	$(CXX) sfmlTest.o -o sfml-app $(LDFLAGS)
 
 clean:
 	$(RM) $(OBJ)

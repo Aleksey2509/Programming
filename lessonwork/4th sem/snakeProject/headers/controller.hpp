@@ -12,7 +12,7 @@
 //     Controller() = 0;
 //     ~Controller() = 0;
 
-// private:
+// protected:
 //     Model::Snake& snake;
 // };
 
@@ -26,7 +26,6 @@ private:
     Snake& snake_;
 
     void handleKey(char key);
-    void updateSnakePosition();
 };
 
 // class RobotAI

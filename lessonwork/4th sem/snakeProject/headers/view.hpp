@@ -1,18 +1,18 @@
 #ifndef VIEW_HPP
 #define VIEW_HPP
 
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
-#include "unistd.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <unistd.h>
 #include <list>
 #include <utility>
 #include <functional>
 
 using Point = std::pair<int, int>;
 using Rabbit = Point;
-using kHandler = std::function<void (int )>;
-using Drawer = std::function<void ()>;
+using drawer = std::function<bool ()>;
+using keyHandler = std::function<void (int )>;
 
 class Snake
 {
@@ -26,6 +26,13 @@ public:
         RIGHT
     };
 
+    enum Status
+    {
+        ALIVE,
+        ATE_A_RABBIT = 0x1,
+        LOST,
+    };
+
     int dir;
 };
 
@@ -35,11 +42,13 @@ struct AbstractView
     virtual void drawGameBoard() = 0; // abstract method
     virtual void run() = 0;
     virtual void draw() = 0;
-    virtual void draw(Rabbit rabbit) = 0;
-    virtual void draw(Snake& snake) = 0;
+    virtual void draw(const Rabbit& rabbit) = 0;
+    virtual void draw(const Snake& snake) = 0;
+    virtual void drawSpace(const Point& point) = 0;
+    virtual void drawLostMsg() = 0;
 
-    virtual void setDrawer(Drawer) = 0;
-    virtual void setKeyHandler(kHandler) = 0;
+    virtual void setDrawer(drawer ) = 0;
+    virtual void setKeyHandler(keyHandler ) = 0;
 
     virtual const int getMaxX() = 0;
     virtual const int getMaxY() = 0;
@@ -50,8 +59,8 @@ struct AbstractView
 private:
     static AbstractView* viewObj;
 
-    Drawer drawAll;
-    kHandler keyHandler;
+    drawer drawAll;
+    keyHandler keyHandlerFunc;
 };
 
 #endif

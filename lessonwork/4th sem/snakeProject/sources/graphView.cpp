@@ -2,11 +2,29 @@
 
 GraphView::GraphView()
 {
-    printf("I am not implemented\n");
+    printf("I starting to being implemented\n");
 }
 
 void GraphView::run()
 {
+    sf::RenderWindow window(sf::VideoMode(200, 200), "SFML works!");
+    sf::CircleShape shape(100.f);
+    shape.setFillColor(sf::Color::Green);
+
+    while (window.isOpen())
+    {
+        sf::Event event;
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed)
+                window.close();
+        }
+
+        window.clear();
+        window.draw(shape);
+        window.display();
+    }
+
     return;
 }
 
@@ -20,17 +38,27 @@ void GraphView::draw()
     return;
 }
 
-void GraphView::draw(Rabbit rabbit)
+void GraphView::draw(const Rabbit& rabbit)
 {
 
 }
 
-void GraphView::draw(Snake& snake)
+void GraphView::draw(const Snake& snake)
 {
     
 }
 
-void GraphView::setDrawer(Drawer drawFunc)
+void GraphView::drawSpace(const Point& point)
+{
+    
+}
+
+void GraphView::drawLostMsg()
+{
+    
+}
+
+void GraphView::setDrawer(drawer drawFunc)
 {
     
 }
@@ -45,7 +73,7 @@ const int GraphView::getMaxY()
     return 0;
 }
 
-void GraphView::setKeyHandler(kHandler)
+void GraphView::setKeyHandler(keyHandler keyHandlerFunc)
 {
     return;
 }

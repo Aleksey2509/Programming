@@ -45,14 +45,14 @@ TextView::TextView()
     signal(SIGINT, sigHandler);
 }
 
-void TextView::setDrawer(Drawer drawFunc)
+void TextView::setDrawer(drawer drawFunc)
 {
     drawAll = drawFunc;
 }
 
-void TextView::setKeyHandler(kHandler keyHandle)
+void TextView::setKeyHandler(keyHandler keyHandlerFunc)
 {
-    keyHandler = keyHandle;
+    keyHandle = keyHandlerFunc;
 }
 
 const int TextView::getMaxX()
@@ -75,8 +75,9 @@ void TextView::run()
     struct pollfd fds = {0, POLLIN};
 
     drawGameBoard();
+    bool ifLost = false;
     drawAll();
-    FILE* log = fopen("log", "a");
+    //FILE* log = fopen("log", "a");
     while (final == false)
     {
         //printf("proccessing\n");
@@ -90,8 +91,8 @@ void TextView::run()
             char keyBuf[BUFSIZ];
             int size = read(0, keyBuf, BUFSIZ);
 
-            fprintf(log, "caught %c\n", keyBuf[0]);
-            fflush(log);
+            // fprintf(log, "caught %c\n", keyBuf[0]);
+            // fflush(log);
 
             for (int i = 0; i < size; i++)
                 if (keyBuf[i] == 'q')
@@ -101,8 +102,14 @@ void TextView::run()
                 }
                 else
                 {
-                    keyHandler(keyBuf[i]);
-                    drawAll();
+                    keyHandle(keyBuf[i]);
+                    ifLost = drawAll();
+                    if (ifLost)
+                    {
+                        drawLostMsg();
+                        final = true;
+                        break;
+                    }
                 }
         }
 
@@ -115,13 +122,13 @@ void TextView::run()
 
         //game->draw();
     }
-    fclose(log);
+    //fclose(log);
     //printf("\nend proccessing\n");
 
     return;
 }
 
-void TextView::draw(Rabbit rabbit)
+void TextView::draw(const Rabbit& rabbit)
 {   
     gotoxy(rabbit.first, rabbit.second);
     setColor(5);
@@ -129,12 +136,12 @@ void TextView::draw(Rabbit rabbit)
     printf("\e[m");
 }
 
-void TextView::draw(Snake& snake)
+void TextView::draw(const Snake& snake)
 {
-    FILE* log = fopen ("log", "a");
+    //FILE* log = fopen ("log", "a");
     auto it = snake.body.begin();
-    fprintf(log, "head at %D %D with dir %D\n", it->first, it->second, snake.dir);
-    fflush(log);
+    // fprintf(log, "head at %D %D with dir %D\n", it->first, it->second, snake.dir);
+    // fflush(log);
 
     gotoxy(*it);
 
@@ -150,17 +157,34 @@ void TextView::draw(Snake& snake)
                 break;
     }
 
-    for (it++; it != snake.body.end(); it++)
+    auto lastToDraw = snake.body.end();
+    if (snake.body.front() == snake.body.back())
+        lastToDraw--;
+
+    for (it++; it != lastToDraw; it++)
     {
         gotoxy(*it);
         putchar('#');
     }
 
-    it--;
-    gotoxy(*it);
+    //fclose(log);
+
+    return;
+}
+
+void TextView::drawSpace(const Point& point)
+{
+    gotoxy(point.first, point.second);
     putchar(' ');
 
-    fclose(log);
+    return;
+}
+
+void TextView::drawLostMsg()
+{
+    gotoxy(getMaxX()/2, (getMaxY() - strlen("YOU LOST!")) / 2);
+    puts("YOU LOST!");
+    sleep(2);
 
     return;
 }
@@ -191,6 +215,8 @@ void TextView::drawGameBoard()
     return;
 }
 
+//======================================================================================================================
+
 void TextView::placeCorners()
 {
     gotoxy(1, 1);
@@ -210,15 +236,13 @@ void TextView::placeCorners()
     usleep(200000);
 }
 
-//======================================================================================================================
-
 void TextView::gotoxy(int x, int y)
 {
     printf("\e[%d;%dH", x, y);
     return;
 }
 
-void TextView::gotoxy(Point point)
+void TextView::gotoxy(const Point& point)
 {
     printf("\e[%d;%dH", point.first, point.second);
     return;
@@ -280,8 +304,10 @@ void TextView::clearScreeen()
 
 TextView::~TextView()
 {
-    //printf ("\e[m");
-    printf("destroying\n");
+    sleep(3);
+    gotoxy(1, 1);
+    clearScreeen();
+    // printf("destroying\n");
     tcsetattr(0, TCSANOW, &oldSettings);
     setvbuf (stdout, NULL, _IOFBF, 0);
     return;

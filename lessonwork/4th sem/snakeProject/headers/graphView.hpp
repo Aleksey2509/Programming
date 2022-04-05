@@ -2,6 +2,7 @@
 #define GRAPHVIEW_HPP
 
 #include "view.hpp"
+#include <SFML/Graphics.hpp>
 
 class GraphView : public AbstractView
 {
@@ -12,14 +13,16 @@ public:
     virtual void drawGameBoard();
     virtual void run();
     virtual void draw();
-    virtual void draw(Rabbit rabbit);
-    virtual void draw(Snake& snake);
+    virtual void draw(const Rabbit& rabbit);
+    virtual void draw(const Snake& snake);
+    virtual void drawSpace(const Point& point);
+    virtual void drawLostMsg();
 
     virtual const int getMaxX();
     virtual const int getMaxY();
 
-    virtual void setDrawer(Drawer );
-    virtual void setKeyHandler(kHandler );
+    virtual void setDrawer(drawer drawerFunc);
+    virtual void setKeyHandler(keyHandler keyHandlerFunc);
 };
 
 #endif
