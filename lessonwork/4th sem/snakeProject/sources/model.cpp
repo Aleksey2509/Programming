@@ -3,17 +3,42 @@
 Model::Model()
 {
     view->setDrawer(std::bind(&Model::drawAll, this));
+    // printf("Got max x and max y as %d and %d", view->getMaxX(), view->getMaxY());
 
+    for (int i = 0; i < StartingRabbits; ++i)
+        rabbits.push_front(getPoint());
+}
+
+Snake& Model::createRandomSnake()
+{
+    Snake snake;
+    snake.body.push_back(getPoint());
+    snake.col = Color::YELLOW;
+
+    snakes.push_back(snake);
+
+    return snakes.back();
+}
+
+void Model::setBotController(botController update)
+{
+    botUpdaterVec.push_back(update);
+}
+
+Snake& Model::createStartSnake()
+{
+
+    Snake snake;
     snake.body.push_back({view->getMaxX() / 2, view->getMaxY() / 2});
     snake.body.push_back({view->getMaxX() / 2, view->getMaxY() / 2 - 1});
     snake.body.push_back({view->getMaxX() / 2, view->getMaxY() / 2 - 2});
     snake.body.push_back({view->getMaxX() / 2, view->getMaxY() / 2 - 3});
+    snake.col = Color::GREEN;
 
-    rabbits.push_front(getPoint());
-    rabbits.push_front(getPoint());
-    rabbits.push_front(getPoint());
+    snakes.push_back(snake);
 
-    snake.dir = Snake::RIGHT;
+    return snakes.back();
+
 }
 
 const Point Model::getPoint()
@@ -24,10 +49,10 @@ const Point Model::getPoint()
     int x = distributionX(gen);
     int y = distributionY(gen);
 
-    Rabbit newRabbit (x, y);
+    Point newPoint (x, y);
 
 
-    return makePointValid(newRabbit);
+    return makePointValid(newPoint);
 }
 
 const Point Model::makePointValid(Point& point)
@@ -37,14 +62,16 @@ const Point Model::makePointValid(Point& point)
 
     while(true)
     {
-        for (auto it = snake.body.begin(); it != snake.body.end(); it++)
-        {
-            if (point == *it)
+        for (auto snakeIt = snakes.begin(); snakeIt != snakes.end(); ++snakeIt)
+            for (auto it = snakeIt->body.begin(); it != snakeIt->body.end(); ++it)
             {
-                needForReplacement = true;
-                break;
+                if (point == *it)
+                {
+                    needForReplacement = true;
+                    break;
+                }
             }
-        }
+
         if (needForReplacement)
         {
             if (point.first != 2)
@@ -65,6 +92,7 @@ const Point Model::makePointValid(Point& point)
         else
             break;
     }
+
     return point;
 }
 
@@ -78,21 +106,37 @@ bool Model::drawAll()
         //rabbits.pop_front();
     }
 
-    int status = updateSnake();
-    if (status == snake.LOST)
-        return true;
+    for (auto controlFunc = botUpdaterVec.begin(); controlFunc != botUpdaterVec.end(); ++controlFunc)
+        (*controlFunc)();
 
-    view->draw(snake);
-
-    if (status != snake.ATE_A_RABBIT)
+    for (auto snakeIt = snakes.begin(); snakeIt != snakes.end(); ++snakeIt)
     {
-        if (snake.body.front() != snake.body.back())
-            view->drawSpace(snake.body.back());
-        snake.body.pop_back();
+        updateSnake(*snakeIt);
+
+        if (snakeIt->status == Snake::Status::LOST)
+        {
+            if (snakeIt == snakes.begin())
+                return true;
+            else
+                continue;
+        }
+        
+        view->draw(*snakeIt);
+
+        if (snakeIt->status != Snake::Status::ATE_A_RABBIT)
+        {
+            if (snakeIt->body.front() != snakeIt->body.back())
+                view->drawSpace(snakeIt->body.back());
+            snakeIt->body.pop_back();
+        }
+        else
+            snakeIt->status = Snake::Status::ALIVE;
     }
 
+    
+
     ticks = (ticks + 1) % rabbitSpawnTime;
-    if (!ticks)
+    if (!ticks && (rabbits.size() < StartingRabbits))
         rabbits.push_back(getPoint());
     // auto it = rabbits.begin();
     // view->drawRabbit(*it);
@@ -100,44 +144,46 @@ bool Model::drawAll()
     return false;
 }
 
-int Model::updateSnake()
+void Model::updateSnake(Snake& snake)
 {
-    //FILE* log = fopen ("log", "a");
+    // FILE* log = fopen ("log", "a");
     auto head = snake.body.front();
 
-    int status = snake.ALIVE;
-    switch(snake.dir)
+    switch(snake.direction)
     {
-        case Snake::UP:  (head.first)--;
+        case Snake::Direction::UP:  (head.first)--;
                                 if (head.first == 1)
-                                    status = snake.LOST;
+                                    snake.status = Snake::Status::LOST;
                                 break;
 
-        case Snake::DOWN:    (head.first)++;
+        case Snake::Direction::DOWN:    (head.first)++;
                                     if (head.first == AbstractView::getView()->getMaxX())
-                                     status = snake.LOST;
+                                     snake.status = Snake::Status::LOST;
                                  break;
 
-        case Snake::LEFT:  (head.second)--;
+        case Snake::Direction::LEFT:  (head.second)--;
                                   if (head.second == 1)
-                                     status = snake.LOST;
+                                     snake.status = Snake::Status::LOST;
                                   break;
 
-        case Snake::RIGHT: (head.second)++;
+        case Snake::Direction::RIGHT: (head.second)++;
                                    if (head.second == AbstractView::getView()->getMaxY())
-                                     status = snake.LOST;
+                                     snake.status = Snake::Status::LOST;
                                   break;
     }
 
     // fprintf(log, "now head at %D %D with dir %D\n", head.first, head.second, snake_.dir);
     // fclose(log);
-    if (status == snake.LOST)
-        return status;
+    if (snake.status == Snake::Status::LOST)
+        return;
 
     for (auto it = snake.body.begin(); *it != snake.body.back(); it++)
     {
         if (head == *it)
-            return snake.LOST;
+        {
+            snake.status = Snake::Status::LOST;
+            return;
+        }
     }
 
     snake.body.push_front(head);
@@ -146,12 +192,13 @@ int Model::updateSnake()
     {
         if (*it == head)
         {
-            status = snake.ATE_A_RABBIT;
-            rabbits.erase(it);
+            snake.status = Snake::Status::ATE_A_RABBIT;
+            auto toErase = it;
+            rabbits.erase(toErase);
         }
     }
 
-    return status;
+    return;
 }
 
 

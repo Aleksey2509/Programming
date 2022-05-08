@@ -1,6 +1,7 @@
 #ifndef VIEW_HPP
 #define VIEW_HPP
 
+#include <iostream>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -14,11 +15,25 @@ using Rabbit = Point;
 using drawer = std::function<bool ()>;
 using keyHandler = std::function<void (int )>;
 
-class Snake
+enum Color : int
+{
+    BLACK,
+    RED,
+    GREEN,
+    YELLOW,
+    BLUE,
+    MAGENTA,
+    CYAN,
+    WHITE,
+    DEFAULT = 9,
+};
+
+struct Snake
 {
 public:
+
     std::list<Point> body;
-    enum Direction
+    enum class Direction : int
     {
         UP = 0,
         DOWN,
@@ -26,14 +41,19 @@ public:
         RIGHT
     };
 
-    enum Status
+    Direction direction = Direction::RIGHT;
+
+    enum class Status : int
     {
         ALIVE,
         ATE_A_RABBIT = 0x1,
         LOST,
     };
 
-    int dir;
+    Status status = Status::ALIVE;
+
+    Color col = Color::DEFAULT;
+
 };
 
 struct AbstractView
@@ -50,17 +70,14 @@ struct AbstractView
     virtual void setDrawer(drawer ) = 0;
     virtual void setKeyHandler(keyHandler ) = 0;
 
-    virtual const int getMaxX() = 0;
-    virtual const int getMaxY() = 0;
+    virtual inline const int getMaxX() = 0;
+    virtual inline const int getMaxY() = 0;
 
 
     virtual ~AbstractView(){}
 
 private:
     static AbstractView* viewObj;
-
-    drawer drawAll;
-    keyHandler keyHandlerFunc;
 };
 
 #endif

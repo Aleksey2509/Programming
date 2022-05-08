@@ -13,7 +13,8 @@ int main(int argc, char* argv[])
         v = AbstractView::getView(argv[1]);
     }
     Model model;
-    Human humanAI(model.snake);
+    Human humanAI(model.createStartSnake());
+    LessDumbRobot dumb (model.createRandomSnake(), model);
     v->run();
 
     // sleep(1);

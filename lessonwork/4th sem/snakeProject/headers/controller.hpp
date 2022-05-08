@@ -2,40 +2,56 @@
 #define CONROLLER_HPP
 
 #include <functional>
+#include <cmath>
 
 #include "model.hpp"
 
-// class Controller
-// {
-// public:
-
-//     Controller() = 0;
-//     ~Controller() = 0;
-
-// protected:
-//     Model::Snake& snake;
-// };
-
 class Human
 {
+
 public:
-    Human(Snake& snakeToControl);
+    Human(Snake& snake);
     ~Human();
 
 private:
+
     Snake& snake_;
 
-    void handleKey(char key);
+    void handleKey(char key) ;
 };
 
-// class RobotAI
-// {
-//     RobotAI(Model::Snake& snakeToControl);
-//     ~RobotAI();
+class IRobot
+{
+public:
+    IRobot(Snake& snake, Model& model);
+    virtual ~IRobot();
 
-// private:
-//     void handleKey(int key);
-//     //Model::Snake& snake;
-// };
+protected:
+
+    Snake& snake_;
+    std::list<Rabbit>& rabbits;
+    virtual void control() {return;};
+};
+
+
+class DumbRobot : public IRobot
+{
+public:
+    DumbRobot(Snake& snake, Model& model);
+    ~DumbRobot();
+
+private:
+    virtual void control() override;
+};
+
+class LessDumbRobot : public IRobot
+{
+public:
+    LessDumbRobot(Snake& snake, Model& model);
+    ~LessDumbRobot();
+
+private:
+    virtual void control() override;
+};
 
 #endif

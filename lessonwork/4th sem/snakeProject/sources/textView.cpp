@@ -28,8 +28,8 @@ TextView::TextView()
     ioctl(1, TIOCGWINSZ, &currentTerminalSize);
     ioctl(1, TIOCSWINSZ, &currentTerminalSize);
 
-    windowRow = currentTerminalSize.ws_row;
-    windowCol = currentTerminalSize.ws_col;
+    maxX = currentTerminalSize.ws_row;
+    maxY = currentTerminalSize.ws_col;
 
     // std::function<void(int)> sigHand;
     // sigHand = sigHandler;
@@ -45,35 +45,21 @@ TextView::TextView()
     signal(SIGINT, sigHandler);
 }
 
-void TextView::setDrawer(drawer drawFunc)
-{
-    drawAll = drawFunc;
-}
+void TextView::setDrawer(drawer drawFunc) { drawAll = drawFunc; }
 
-void TextView::setKeyHandler(keyHandler keyHandlerFunc)
-{
-    keyHandle = keyHandlerFunc;
-}
+void TextView::setKeyHandler(keyHandler keyHandler) { keyHandlerFunc = keyHandler; }
 
-const int TextView::getMaxX()
-{
-    return windowRow;
-}
+inline const int TextView::getMaxX() { return maxX; }
 
-const int TextView::getMaxY()
-{
-    return windowCol;
-}
+inline const int TextView::getMaxY() { return maxY; }
 
-void TextView::draw()
-{
-
-}
+void TextView::draw() { }
 
 void TextView::run()
 {
     struct pollfd fds = {0, POLLIN};
 
+    clearScreeen();
     drawGameBoard();
     bool ifLost = false;
     drawAll();
@@ -86,7 +72,6 @@ void TextView::run()
         if (pollRes == 1)
         {
             // printf("shit, a key comming");
-            
 
             char keyBuf[BUFSIZ];
             int size = read(0, keyBuf, BUFSIZ);
@@ -102,7 +87,7 @@ void TextView::run()
                 }
                 else
                 {
-                    keyHandle(keyBuf[i]);
+                    keyHandlerFunc(keyBuf[i]);
                     ifLost = drawAll();
                     if (ifLost)
                     {
@@ -131,7 +116,7 @@ void TextView::run()
 void TextView::draw(const Rabbit& rabbit)
 {   
     gotoxy(rabbit.first, rabbit.second);
-    setColor(5);
+    setColor(Color::MAGENTA);
     putchar('.');
     printf("\e[m");
 }
@@ -145,15 +130,17 @@ void TextView::draw(const Snake& snake)
 
     gotoxy(*it);
 
-    switch (snake.dir)
+    setColor(snake.col);
+    switch (snake.direction)
     {
-        case Snake::UP : putchar('^');
+        // using Snake::Direction;
+        case Snake::Direction::UP : putchar('^');
                 break;
-        case Snake::DOWN: putchar('v');
+        case Snake::Direction::DOWN: putchar('v');
                 break;
-        case Snake::LEFT: putchar('<');
+        case Snake::Direction::LEFT: putchar('<');
                 break;
-        case Snake::RIGHT: putchar('>');
+        case Snake::Direction::RIGHT: putchar('>');
                 break;
     }
 
@@ -166,7 +153,7 @@ void TextView::draw(const Snake& snake)
         gotoxy(*it);
         putchar('#');
     }
-
+    setColor(Color::BLACK);
     //fclose(log);
 
     return;
@@ -174,7 +161,7 @@ void TextView::draw(const Snake& snake)
 
 void TextView::drawSpace(const Point& point)
 {
-    gotoxy(point.first, point.second);
+    gotoxy(point);
     putchar(' ');
 
     return;
@@ -197,17 +184,17 @@ void TextView::drawGameBoard()
     placeCorners();
     
 
-    hline(1, 2, windowCol - 2);
-    vline(2, 1, windowRow - 2);
-    hline(windowCol - 1, 2, windowCol - 2);
-    vline(2, windowCol, windowRow - 2);
+    hline(1, 2, maxY - 2);
+    vline(2, 1, maxX - 2);
+    hline(maxY - 1, 2, maxY - 2);
+    vline(2, maxY, maxX - 2);
 
     printf("\e[m");
 
-    gotoxy(1, (windowCol- strlen("SNAKE")) / 2);
+    gotoxy(1, (maxY- strlen("SNAKE")) / 2);
     puts("SNAKE");
 
-    // gotoxy(windowRow, windowCol - strlen("v0.1") - 2);
+    // gotoxy(maxX, maxY - strlen("v0.1") - 2);
     // puts("v0.1");
 
     //drawRabbits();
@@ -223,15 +210,15 @@ void TextView::placeCorners()
     putchar('+');
     usleep(200000);
 
-    gotoxy(windowRow, 1);
+    gotoxy(maxX, 1);
     putchar('+');
     usleep(200000);
 
-    gotoxy(1, windowCol);
+    gotoxy(1, maxY);
     putchar('+');
     usleep(200000);
 
-    gotoxy(windowRow, windowCol);
+    gotoxy(maxX, maxY);
     putchar('+');
     usleep(200000);
 }
@@ -260,10 +247,10 @@ void TextView::putstr(const char* str)     //puts
     return;
 }
 
-void TextView::setColor(int color)
+void TextView::setColor(Color color)
 {
     //printf ("\e[m");
-    printf ("\e[%dm", 30 + color);
+    printf ("\e[%dm", Adapter::adaptColTView(color));
     return;
 }
 
@@ -273,7 +260,7 @@ void TextView::hline(int x, int y, int len) // box
     {
         gotoxy(x, y + i);
         usleep(10000);
-        setColor(3);
+        setColor(Color::YELLOW);
         putchar('-');
     }
 
@@ -287,7 +274,7 @@ void TextView::vline(int x, int y, int len)
     {
         gotoxy(x + i, y);
         usleep(10000);
-        setColor(3);
+        setColor(Color::YELLOW);
         putchar('|');
     }
 
@@ -296,6 +283,7 @@ void TextView::vline(int x, int y, int len)
 
 void TextView::clearScreeen()
 {
+    gotoxy(0, 0);
     printf("\eH\e[J");
     return;
 }
@@ -305,9 +293,9 @@ void TextView::clearScreeen()
 TextView::~TextView()
 {
     sleep(3);
+    printf("\e[m");
     gotoxy(1, 1);
     clearScreeen();
-    // printf("destroying\n");
     tcsetattr(0, TCSANOW, &oldSettings);
     setvbuf (stdout, NULL, _IOFBF, 0);
     return;

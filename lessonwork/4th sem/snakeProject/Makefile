@@ -7,7 +7,7 @@ LDFLAGS += -lsfml-graphics -lsfml-window -lsfml-system
 HEADL = headers
 
 SRCL = sources
-SOURCES = controller.cpp view.cpp textView.cpp graphView.cpp main.cpp model.cpp
+SOURCES = controller.cpp view.cpp textView.cpp graphView.cpp main.cpp model.cpp adapter.cpp
 SRC := $(addprefix $(SRCL)/, $(SOURCES))
 
 OBJL = object

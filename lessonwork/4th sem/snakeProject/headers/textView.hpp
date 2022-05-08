@@ -2,6 +2,7 @@
 #define TEXTVIEW_HPP
 
 #include "view.hpp"
+#include "adapter.hpp"
 
 class TextView : public AbstractView
 {
@@ -22,30 +23,29 @@ public:
     virtual void setDrawer(drawer drawerFunc);
     virtual void setKeyHandler(keyHandler keyHandlerFunc);
 
-    virtual const int getMaxX();
-    virtual const int getMaxY();
-
-
+    virtual inline const int getMaxX();
+    virtual inline const int getMaxY();
 
 private:
-    int windowCol;
-    int windowRow;
+
+    int maxX;
+    int maxY;
+
+    drawer drawAll;
+    keyHandler keyHandlerFunc;
 
     void gotoxy(int x, int y);
     void gotoxy(const Point& point);
     void putchar(char c);       //putc
     void putstr(const char* str);     //puts
 
-    void setColor(int color);
+    void setColor(Color color);
 
     void hline(int x, int y, int len); // box
     void vline(int x, int y, int len); //
     //void sigHandler(int sig);
 
     void clearScreeen();
-
-    keyHandler keyHandle;
-    drawer drawAll;
 };
 
 #endif

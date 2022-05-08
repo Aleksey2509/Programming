@@ -7,6 +7,10 @@
 
 #include "view.hpp"
 
+using botController = std::function<void ()>;
+
+constexpr int StartingRabbits = 20;
+
 class Model
 {
 public:
@@ -15,9 +19,16 @@ public:
 
     bool drawAll();
 
-    Snake snake;
+    Snake& createStartSnake();
+    Snake& createRandomSnake();
+    void setBotController(botController update);
+    std::list<Rabbit>& getRabbits() { return rabbits; } // for AI
+
+
 private:
     std::list<Rabbit> rabbits;
+    std::list<Snake> snakes;
+    std::vector<botController> botUpdaterVec;
 
     const Point getPoint();
     const Point makePointValid(Point& point);
@@ -25,7 +36,7 @@ private:
     AbstractView* view = AbstractView::getView();
     std::random_device gen;
     const int rabbitSpawnTime = 5;
-    int updateSnake();
+    void updateSnake(Snake& snake);
 };
 
 #endif
