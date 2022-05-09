@@ -62,12 +62,12 @@ void DumbRobot::control()
 
     if ((rabbitToEat.first > snakeHead->first))
     {
-        snake_.direction = Direction::UP;
+        snake_.direction = Direction::DOWN;
         return;
     }
     if ((rabbitToEat.first < snakeHead->first))
     {
-        snake_.direction = Direction::DOWN;
+        snake_.direction = Direction::UP;
         return;
     }
     if ((rabbitToEat.second > snakeHead->second))

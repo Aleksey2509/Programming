@@ -15,8 +15,8 @@ int main(int argc, char* argv[])
     }
     Model model;
     Human humanAI(model.createStartSnake());
-    // DumbRobot dumb (model.createRandomSnake(), model);
-    LessDumbRobot dumb1 (model);
+    DumbRobot dumbest (model);
+    LessDumbRobot dumb (model);
     // LessDumbRobot dumb2 (model);
     v->run();
 
