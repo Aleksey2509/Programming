@@ -5,40 +5,57 @@ Model::Model()
     view->setDrawer(std::bind(&Model::drawAll, this));
     // printf("Got max x and max y as %d and %d", view->getMaxX(), view->getMaxY());
 
-    for (int i = 0; i < StartingRabbits; ++i)
-        rabbits.push_front(getPoint());
+    for (int i = 0; i < MaxRabbits; ++i)
+        rabbits_.push_front(getPoint());
 }
 
-Snake& Model::createRandomSnake()
-{
-    Snake snake;
-    snake.body.push_back(getPoint());
-    snake.col = Color::YELLOW;
+// Snake& Model::createRandomSnake()
+// {
+//     Snake snake;
+//     snake.body.push_back(getPoint());
+//     snake.col = Color::YELLOW;
 
-    snakes.push_back(snake);
+//     snakes_.push_back(snake);
 
-    return snakes.back();
-}
-
-void Model::setBotController(botController update)
-{
-    botUpdaterVec.push_back(update);
-}
+//     return snakes_.back();
+// }
 
 Snake& Model::createStartSnake()
 {
 
     Snake snake;
-    snake.body.push_back({view->getMaxX() / 2, view->getMaxY() / 2});
-    snake.body.push_back({view->getMaxX() / 2, view->getMaxY() / 2 - 1});
-    snake.body.push_back({view->getMaxX() / 2, view->getMaxY() / 2 - 2});
-    snake.body.push_back({view->getMaxX() / 2, view->getMaxY() / 2 - 3});
+    auto Xstart = view->getMaxX() / 2;
+    auto Ystart = view->getMaxY() / 2;
+    snake.body.push_back({Xstart, Ystart});
+    snake.body.push_back({Xstart, Ystart - 1});
+    snake.body.push_back({Xstart, Ystart - 2});
+    snake.body.push_back({Xstart, Ystart - 3});
     snake.col = Color::GREEN;
+    snake.player = true;
 
-    snakes.push_back(snake);
+    snakes_.push_back(snake);
 
-    return snakes.back();
+    return snakes_.back();
 
+}
+
+Snake& Model::createBotSnake()
+{
+    Snake snake;
+    // printf("int create bot snake ctor\n");
+    // fflush(stdout);
+    snake.body.push_back(getPoint());
+    snake.col = Color::YELLOW;
+    snake.player = false;
+
+    snakes_.push_back(snake);
+
+    return snakes_.back();
+}
+
+void Model::setBotController(botController updater)
+{
+    botUpdaterVec_.push_back(updater);
 }
 
 const Point Model::getPoint()
@@ -46,8 +63,8 @@ const Point Model::getPoint()
     std::uniform_int_distribution<int> distributionX(2, view->getMaxX() - 3);
     std::uniform_int_distribution<int> distributionY(2, view->getMaxY() - 3);
     
-    int x = distributionX(gen);
-    int y = distributionY(gen);
+    int x = distributionX(gen_);
+    int y = distributionY(gen_);
 
     Point newPoint (x, y);
 
@@ -57,15 +74,18 @@ const Point Model::getPoint()
 
 const Point Model::makePointValid(Point& point)
 {
-    Point oldPoint = point;
+    auto oldPoint = point;
     bool needForReplacement = false;
+
+    // printf("in make point valid\n");
+    // fflush(stdout);
 
     while(true)
     {
-        for (auto snakeIt = snakes.begin(); snakeIt != snakes.end(); ++snakeIt)
-            for (auto it = snakeIt->body.begin(); it != snakeIt->body.end(); ++it)
+        for (auto snakeIt : snakes_)
+            for (auto it : snakeIt.body)
             {
-                if (point == *it)
+                if (point == it)
                 {
                     needForReplacement = true;
                     break;
@@ -100,48 +120,87 @@ bool Model::drawAll()
 {
     static int ticks = 1;
 
-    for (auto it = rabbits.begin(); it != rabbits.end(); it++)
+    for (auto it : rabbits_)
     {
-        view->draw(*it);
+        view->draw(it);
         //rabbits.pop_front();
     }
 
-    for (auto controlFunc = botUpdaterVec.begin(); controlFunc != botUpdaterVec.end(); ++controlFunc)
-        (*controlFunc)();
+    for (auto controlFunc : botUpdaterVec_)
+        (controlFunc)();
 
-    for (auto snakeIt = snakes.begin(); snakeIt != snakes.end(); ++snakeIt)
+    for (auto& snakeIt : snakes_)
+        updateSnake(snakeIt);
+
+    checkForDeaths();
+
+    auto controlFuncIt = botUpdaterVec_.begin();
+    for (auto snakeIt = snakes_.begin(); snakeIt != snakes_.end(); ++snakeIt)
     {
-        updateSnake(*snakeIt);
-
-        if (snakeIt->status == Snake::Status::LOST)
+        if (snakeIt->status == Status::LOST)
         {
-            if (snakeIt == snakes.begin())
+            if (snakeIt->player == true)
                 return true;
             else
+            {
+                if (snakeIt->player == false)
+                    {
+                        auto funcToErase = controlFuncIt;
+                        controlFuncIt--;
+                        botUpdaterVec_.erase(funcToErase);
+                        controlFuncIt++;
+                    }
+    
+                auto snakeToErase = snakeIt;
+                snakeIt--;
+                view->clearSnake(*snakeToErase);
+                snakes_.erase(snakeToErase);
+
                 continue;
+            }
         }
         
         view->draw(*snakeIt);
 
-        if (snakeIt->status != Snake::Status::ATE_A_RABBIT)
+        if (snakeIt->status != Status::ATE_A_RABBIT)
         {
             if (snakeIt->body.front() != snakeIt->body.back())
                 view->drawSpace(snakeIt->body.back());
             snakeIt->body.pop_back();
         }
         else
-            snakeIt->status = Snake::Status::ALIVE;
+            snakeIt->status = Status::ALIVE;
+
+        if (snakeIt->player == false)
+            controlFuncIt++;
+
     }
 
-    
-
-    ticks = (ticks + 1) % rabbitSpawnTime;
-    if (!ticks && (rabbits.size() < StartingRabbits))
-        rabbits.push_back(getPoint());
+    ticks = (ticks + 1) % rabbitSpawnTime_;
+    if (!ticks && (rabbits_.size() < MaxRabbits))
+        rabbits_.push_back(getPoint());
     // auto it = rabbits.begin();
     // view->drawRabbit(*it);
 
     return false;
+}
+
+void Model::checkForDeaths()
+{
+    for (auto& currentsnakeIt : snakes_)
+    {
+        if (currentsnakeIt.status == Status::LOST)
+            continue;
+
+        auto head = currentsnakeIt.body.begin();
+        for (auto& snakeIt : snakes_)
+            if (!(currentsnakeIt == snakeIt))
+                for (auto bodyIt : snakeIt.body)
+                    if (*head == bodyIt)
+                    {
+                        currentsnakeIt.status = snakeIt.status = Status::LOST;
+                    }
+    }
 }
 
 void Model::updateSnake(Snake& snake)
@@ -151,50 +210,53 @@ void Model::updateSnake(Snake& snake)
 
     switch(snake.direction)
     {
-        case Snake::Direction::UP:  (head.first)--;
-                                if (head.first == 1)
-                                    snake.status = Snake::Status::LOST;
+        case Direction::UP:  (head.first)--;
+                                if (head.first == AbstractView::getView()->getMinX())
+                                    snake.status = Status::LOST;
                                 break;
 
-        case Snake::Direction::DOWN:    (head.first)++;
+        case Direction::DOWN:    (head.first)++;
                                     if (head.first == AbstractView::getView()->getMaxX())
-                                     snake.status = Snake::Status::LOST;
+                                     snake.status = Status::LOST;
                                  break;
 
-        case Snake::Direction::LEFT:  (head.second)--;
-                                  if (head.second == 1)
-                                     snake.status = Snake::Status::LOST;
+        case Direction::LEFT:  (head.second)--;
+                                  if (head.second == AbstractView::getView()->getMinY())
+                                     snake.status = Status::LOST;
                                   break;
 
-        case Snake::Direction::RIGHT: (head.second)++;
+        case Direction::RIGHT: (head.second)++;
                                    if (head.second == AbstractView::getView()->getMaxY())
-                                     snake.status = Snake::Status::LOST;
+                                     snake.status = Status::LOST;
                                   break;
+        default : break;
     }
 
     // fprintf(log, "now head at %D %D with dir %D\n", head.first, head.second, snake_.dir);
     // fclose(log);
-    if (snake.status == Snake::Status::LOST)
+    if (snake.status == Status::LOST)
         return;
 
-    for (auto it = snake.body.begin(); *it != snake.body.back(); it++)
+    for (auto it : snake.body)
     {
-        if (head == *it)
+        if (head == it)
         {
-            snake.status = Snake::Status::LOST;
+            snake.status = Status::LOST;
+            
             return;
         }
     }
 
     snake.body.push_front(head);
 
-    for (auto it = rabbits.begin(); it != rabbits.end(); it++)
+    for (auto it = rabbits_.begin(); it != rabbits_.end(); it++)
     {
         if (*it == head)
         {
-            snake.status = Snake::Status::ATE_A_RABBIT;
+            snake.status = Status::ATE_A_RABBIT;
             auto toErase = it;
-            rabbits.erase(toErase);
+            it--;
+            rabbits_.erase(toErase);
         }
     }
 

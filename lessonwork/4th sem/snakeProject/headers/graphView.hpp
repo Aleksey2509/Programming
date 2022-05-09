@@ -18,20 +18,23 @@ public:
     virtual void draw(const Rabbit& rabbit);
     virtual void draw(const Snake& snake);
     virtual void drawSpace(const Point& point);
+    virtual void clearSnake(const Snake& snake);
     virtual void drawLostMsg();
 
     virtual inline const int getMaxX();
     virtual inline const int getMaxY();
+    virtual inline const int getMinX();
+    virtual inline const int getMinY();
 
     virtual void setDrawer(drawer drawerFunc);
     virtual void setKeyHandler(keyHandler keyHandlerFunc);
 
 private:
 
-    int maxX;
-    int maxY;
-    int pixelSize;
-    sf::RenderWindow window;
+    int maxX_;
+    int maxY_;
+    int pixelSize_;
+    sf::RenderWindow window_;
 
     drawer drawAll;
     keyHandler keyHandlerFunc;

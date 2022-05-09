@@ -42,14 +42,14 @@ namespace Adapter
         switch(col)
         {
 
-            case BLACK:   return sf::Color::Black;
-            case RED:     return sf::Color::Red;
-            case GREEN:   return sf::Color::Green;
-            case YELLOW:  return sf::Color::Yellow;
-            case BLUE:    return sf::Color::Blue;
-            case MAGENTA: return sf::Color::Magenta;
-            case CYAN:    return sf::Color::Cyan;
-            case WHITE:   return sf::Color::White;
+            case Color::BLACK:   return sf::Color::Black;
+            case Color::RED:     return sf::Color::Red;
+            case Color::GREEN:   return sf::Color::Green;
+            case Color::YELLOW:  return sf::Color::Yellow;
+            case Color::BLUE:    return sf::Color::Blue;
+            case Color::MAGENTA: return sf::Color::Magenta;
+            case Color::CYAN:    return sf::Color::Cyan;
+            case Color::WHITE:   return sf::Color::White;
             default:      return sf::Color::Black;
         }
     }

@@ -15,7 +15,7 @@ using Rabbit = Point;
 using drawer = std::function<bool ()>;
 using keyHandler = std::function<void (int )>;
 
-enum Color : int
+enum class Color : int
 {
     BLACK,
     RED,
@@ -28,33 +28,38 @@ enum Color : int
     DEFAULT = 9,
 };
 
-struct Snake
-{
-public:
-
-    std::list<Point> body;
-    enum class Direction : int
+enum class Direction : int
     {
         UP = 0,
         DOWN,
         LEFT,
-        RIGHT
+        RIGHT,
+        NO_DIRECTION
     };
+
+enum class Status : int
+{
+    ALIVE,
+    ATE_A_RABBIT = 0x1,
+    LOST,
+};
+
+struct Snake
+{
+    std::list<Point> body;
 
     Direction direction = Direction::RIGHT;
-
-    enum class Status : int
-    {
-        ALIVE,
-        ATE_A_RABBIT = 0x1,
-        LOST,
-    };
-
     Status status = Status::ALIVE;
-
     Color col = Color::DEFAULT;
-
+    bool player = true;
 };
+
+inline bool operator==(const Snake& lhs, const Snake& rhs)
+{
+    return (lhs.body == rhs.body) && (lhs.direction == rhs.direction)
+    && (lhs.status == rhs.status) && (lhs.col == rhs.col);
+}
+
 
 struct AbstractView
 {
@@ -65,6 +70,7 @@ struct AbstractView
     virtual void draw(const Rabbit& rabbit) = 0;
     virtual void draw(const Snake& snake) = 0;
     virtual void drawSpace(const Point& point) = 0;
+    virtual void clearSnake(const Snake& snake) = 0;
     virtual void drawLostMsg() = 0;
 
     virtual void setDrawer(drawer ) = 0;
@@ -72,6 +78,8 @@ struct AbstractView
 
     virtual inline const int getMaxX() = 0;
     virtual inline const int getMaxY() = 0;
+    virtual inline const int getMinX() = 0;
+    virtual inline const int getMinY() = 0;
 
 
     virtual ~AbstractView(){}

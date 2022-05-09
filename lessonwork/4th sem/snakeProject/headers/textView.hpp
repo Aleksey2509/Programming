@@ -1,6 +1,8 @@
 #ifndef TEXTVIEW_HPP
 #define TEXTVIEW_HPP
 
+#include <chrono>
+
 #include "view.hpp"
 #include "adapter.hpp"
 
@@ -16,6 +18,7 @@ public:
     virtual void draw(const Rabbit& rabbit);
     virtual void draw(const Snake& snake);
     virtual void drawSpace(const Point& point);
+    virtual void clearSnake(const Snake& snake);
     virtual void drawLostMsg();
 
     void placeCorners();
@@ -25,11 +28,13 @@ public:
 
     virtual inline const int getMaxX();
     virtual inline const int getMaxY();
+    virtual inline const int getMinX();
+    virtual inline const int getMinY();
 
 private:
 
-    int maxX;
-    int maxY;
+    int maxX_;
+    int maxY_;
 
     drawer drawAll;
     keyHandler keyHandlerFunc;

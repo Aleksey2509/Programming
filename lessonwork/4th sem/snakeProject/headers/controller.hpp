@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <cmath>
+#include <algorithm>
 
 #include "model.hpp"
 
@@ -20,37 +21,39 @@ private:
     void handleKey(char key) ;
 };
 
-class IRobot
+class Robot
 {
 public:
-    IRobot(Snake& snake, Model& model);
-    virtual ~IRobot();
+    Robot(Model& model);
+    virtual ~Robot();
 
 protected:
 
     Snake& snake_;
-    std::list<Rabbit>& rabbits;
+    std::list<Rabbit>& rabbits_;
+    std::list<Snake>& snakes_;
     virtual void control() {return;};
 };
 
 
-class DumbRobot : public IRobot
+class DumbRobot : public Robot
 {
 public:
-    DumbRobot(Snake& snake, Model& model);
+    DumbRobot(Model& model);
     ~DumbRobot();
 
 private:
     virtual void control() override;
 };
 
-class LessDumbRobot : public IRobot
+class LessDumbRobot : public Robot
 {
 public:
-    LessDumbRobot(Snake& snake, Model& model);
+    LessDumbRobot(Model& model);
     ~LessDumbRobot();
 
 private:
+    bool ifViableDirection(Direction direction);
     virtual void control() override;
 };
 

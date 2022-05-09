@@ -28,8 +28,8 @@ TextView::TextView()
     ioctl(1, TIOCGWINSZ, &currentTerminalSize);
     ioctl(1, TIOCSWINSZ, &currentTerminalSize);
 
-    maxX = currentTerminalSize.ws_row;
-    maxY = currentTerminalSize.ws_col;
+    maxX_ = currentTerminalSize.ws_row;
+    maxY_ = currentTerminalSize.ws_col;
 
     // std::function<void(int)> sigHand;
     // sigHand = sigHandler;
@@ -49,9 +49,13 @@ void TextView::setDrawer(drawer drawFunc) { drawAll = drawFunc; }
 
 void TextView::setKeyHandler(keyHandler keyHandler) { keyHandlerFunc = keyHandler; }
 
-inline const int TextView::getMaxX() { return maxX; }
+inline const int TextView::getMinY() { return 1; }
 
-inline const int TextView::getMaxY() { return maxY; }
+inline const int TextView::getMinX() { return 1; }
+
+inline const int TextView::getMaxX() { return maxX_; }
+
+inline const int TextView::getMaxY() { return maxY_; }
 
 void TextView::draw() { }
 
@@ -68,7 +72,7 @@ void TextView::run()
     {
         //printf("proccessing\n");
 
-        int pollRes = poll (&fds, 1, 500);
+        int pollRes = poll (&fds, 1, 100);
         if (pollRes == 1)
         {
             // printf("shit, a key comming");
@@ -93,19 +97,26 @@ void TextView::run()
                     {
                         drawLostMsg();
                         final = true;
-                        break;
+                        usleep(500000);
+                        return;
                     }
                 }
         }
+        else
+        {
+            #if 1
+            ifLost = drawAll();
+            if (ifLost)
+            {
+                drawLostMsg();
+                final = true;
+                usleep(500000);
+                return;
+            }
+            #endif
+        }
 
-        // if (n == 0)
-        // {
-
-        // }
-
-        usleep(500000);
-
-        //game->draw();
+        
     }
     //fclose(log);
     //printf("\nend proccessing\n");
@@ -133,15 +144,15 @@ void TextView::draw(const Snake& snake)
     setColor(snake.col);
     switch (snake.direction)
     {
-        // using Snake::Direction;
-        case Snake::Direction::UP : putchar('^');
+        case Direction::UP : putchar('^');
                 break;
-        case Snake::Direction::DOWN: putchar('v');
+        case Direction::DOWN: putchar('v');
                 break;
-        case Snake::Direction::LEFT: putchar('<');
+        case Direction::LEFT: putchar('<');
                 break;
-        case Snake::Direction::RIGHT: putchar('>');
+        case Direction::RIGHT: putchar('>');
                 break;
+        default : break;
     }
 
     auto lastToDraw = snake.body.end();
@@ -167,6 +178,14 @@ void TextView::drawSpace(const Point& point)
     return;
 }
 
+void TextView::clearSnake(const Snake& snake)
+{
+    for (auto snakeIt : snake.body)
+    {
+        drawSpace(snakeIt);
+    }
+}
+
 void TextView::drawLostMsg()
 {
     gotoxy(getMaxX()/2, (getMaxY() - strlen("YOU LOST!")) / 2);
@@ -184,14 +203,14 @@ void TextView::drawGameBoard()
     placeCorners();
     
 
-    hline(1, 2, maxY - 2);
-    vline(2, 1, maxX - 2);
-    hline(maxY - 1, 2, maxY - 2);
-    vline(2, maxY, maxX - 2);
+    hline(1, 2, maxY_ - 2);
+    vline(2, 1, maxX_ - 2);
+    hline(maxY_ - 1, 2, maxY_ - 2);
+    vline(2, maxY_, maxX_ - 2);
 
     printf("\e[m");
 
-    gotoxy(1, (maxY- strlen("SNAKE")) / 2);
+    gotoxy(1, (maxY_ - strlen("SNAKE")) / 2);
     puts("SNAKE");
 
     // gotoxy(maxX, maxY - strlen("v0.1") - 2);
@@ -210,15 +229,15 @@ void TextView::placeCorners()
     putchar('+');
     usleep(200000);
 
-    gotoxy(maxX, 1);
+    gotoxy(maxX_, 1);
     putchar('+');
     usleep(200000);
 
-    gotoxy(1, maxY);
+    gotoxy(1, maxY_);
     putchar('+');
     usleep(200000);
 
-    gotoxy(maxX, maxY);
+    gotoxy(maxX_, maxY_);
     putchar('+');
     usleep(200000);
 }
